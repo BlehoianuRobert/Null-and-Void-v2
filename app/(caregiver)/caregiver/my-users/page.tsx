@@ -32,7 +32,7 @@ export default async function CaregiverMyUsersPage() {
     <div>
       <h1 className="text-xl font-semibold">My users</h1>
       <p className="mt-2 text-sm text-slate-400">
-        Add a patient (blind user profile) and register a device serial number to connect ESP32 telemetry.
+        Add a patient (blind user profile). You can also add the ESP32 Wi‑Fi MAC now, or register it later.
       </p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -44,7 +44,9 @@ export default async function CaregiverMyUsersPage() {
               const name = String(formData.get("name") ?? "");
               const phone = String(formData.get("phone") ?? "");
               const notes = String(formData.get("notes") ?? "");
-              await addPatientAction({ name, phone, notes });
+              const deviceMac = String(formData.get("deviceMac") ?? "");
+              const deviceLabel = String(formData.get("deviceLabel") ?? "");
+              await addPatientAction({ name, phone, notes, deviceMac, deviceLabel });
             }}
             className="mt-4 space-y-4"
           >
@@ -78,6 +80,34 @@ export default async function CaregiverMyUsersPage() {
                 <input
                   id="notes"
                   name="notes"
+                  className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-slate-50 outline-none focus:border-[#1D9E75]"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-200" htmlFor="deviceMac">
+                  ESP32 Wi‑Fi MAC (optional)
+                </label>
+                <input
+                  id="deviceMac"
+                  name="deviceMac"
+                  placeholder="24:6F:28:AA:BB:CC"
+                  className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-slate-50 outline-none focus:border-[#1D9E75]"
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  If provided, we’ll auto-register the device for this patient.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-200" htmlFor="deviceLabel">
+                  Device label (optional)
+                </label>
+                <input
+                  id="deviceLabel"
+                  name="deviceLabel"
+                  placeholder="Hat #1"
                   className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-slate-50 outline-none focus:border-[#1D9E75]"
                 />
               </div>

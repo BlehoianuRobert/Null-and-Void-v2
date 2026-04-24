@@ -12,6 +12,8 @@ const addPatientSchema = z.object({
   name: z.string().min(2),
   phone: z.string().optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
+  deviceMac: z.string().optional().or(z.literal("")),
+  deviceLabel: z.string().optional().or(z.literal("")),
 });
 
 export async function addPatientAction(input: unknown) {
@@ -20,7 +22,7 @@ export async function addPatientAction(input: unknown) {
   const caregiverId = session!.user.id;
 
   try {
-    const { name, phone, notes } = addPatientSchema.parse(input);
+    const { name, phone, notes, deviceMac, deviceLabel } = addPatientSchema.parse(input);
 
     const blindUser = await prisma.user.create({
       data: {
@@ -44,6 +46,24 @@ export async function addPatientAction(input: unknown) {
       },
       select: { id: true },
     });
+
+    const mac = (deviceMac || "").trim();
+    if (mac) {
+      await prisma.device.upsert({
+        where: { serialNumber: mac },
+        update: {
+          ownerId: blindUser.id,
+          label: (deviceLabel || "").trim() || "Hat device",
+          isOnline: false,
+        },
+        create: {
+          serialNumber: mac,
+          ownerId: blindUser.id,
+          label: (deviceLabel || "").trim() || "Hat device",
+          isOnline: false,
+        },
+      });
+    }
 
     revalidatePath("/caregiver/my-users");
     redirect("/caregiver/my-users");
