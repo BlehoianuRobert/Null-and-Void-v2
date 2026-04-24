@@ -133,6 +133,7 @@ function Navbar({ scrolled }) {
         <div className="hidden md:flex items-center gap-8">
           {[
             { label: "Features", href: "#features" },
+            { label: "Platform", href: "#platform" },
             { label: "How It Works", href: "#how-it-works" },
             { label: "Hardware", href: "#hardware" },
             { label: "Gallery", href: "#gallery" },
@@ -214,9 +215,8 @@ function HeroSection() {
           </h1>
 
           <p className="text-slate-400 text-lg leading-relaxed mb-8 max-w-lg">
-            The Digital Twin Hat moves sensing from the ground to the head — replacing
-            the walking stick with a smart, hands-free navigation system that understands
-            your movement context in real time.
+            BlindHat pairs a smart hat (ultrasonic + IMU on ESP32) with a <strong className="text-slate-300">caregiver web platform</strong>,{" "}
+            <strong className="text-slate-300">MQTT + Docker</strong> ingestion, and an <strong className="text-slate-300">Android safety app</strong> for phone GPS and motion checks — so families can see distance, location, and “possible accident” hints in one place.
           </p>
 
           <div className="flex flex-wrap gap-4 mb-8">
@@ -243,7 +243,7 @@ function HeroSection() {
 
           {/* Tech badges */}
           <div className="flex flex-wrap gap-2">
-            {["ESP32-C6", "HC-SR04", "MPU6050", "Raspberry Pi 5", "MQTT", "Next.js"].map((tech) => (
+            {["ESP32-C6", "HC-SR04", "MPU6050", "MQTT", "Docker", "Next.js", "Expo Android"].map((tech) => (
               <span
                 key={tech}
                 className="px-2.5 py-1 rounded-md text-xs font-mono text-slate-500"
@@ -317,9 +317,9 @@ function HeroSection() {
 function StatsBar() {
   const stats = [
     { value: "50 cm", label: "Critical Alert Zone" },
-    { value: "< 500ms", label: "Response Time" },
-    { value: "2× / sec", label: "Sensor Read Rate" },
-    { value: "3 Roles", label: "User Hierarchy" },
+    { value: "MQTT", label: "Hat → Mosquitto → API" },
+    { value: "MAC", label: "Device id = ESP Wi‑Fi MAC" },
+    { value: "GPS + IMU", label: "Phone Track app" },
   ];
   return (
     <section
@@ -346,8 +346,8 @@ function StatsBar() {
 
 const FEATURES = [
   {
-    title: "Real-time Obstacle Detection",
-    desc: "The HC-SR04 ultrasonic sensor fires 40 kHz pulses every 500 ms, detecting obstacles up to 4 m ahead. When within the critical 50 cm zone the onboard buzzer fires instantly — no processing delay.",
+    title: "On-hat sensing",
+    desc: "HC-SR04 distance and MPU6050 motion on the ESP32 drive local buzzer feedback and publish readings over MQTT (e.g. senzor/distanta) to your Mosquitto broker — same LAN or server as the rest of the stack.",
     color: "#1D9E75",
     iconBg: "rgba(29,158,117,0.12)",
     iconBorder: "rgba(29,158,117,0.3)",
@@ -359,35 +359,33 @@ const FEATURES = [
     ),
   },
   {
-    title: "Velocity-Aware Intelligence",
-    desc: "The MPU6050 6-axis IMU tracks walking speed in real time. Faster movement dynamically widens the danger threshold — mirroring how a driver needs more braking distance at speed.",
+    title: "MAC = device identity",
+    desc: "In My users, caregivers register each hat with the ESP32 Wi‑Fi MAC as the device serial. The platform stores distance, last seen, and battery under that device — tied to the right blind user automatically.",
     color: "#0ea5e9",
     iconBg: "rgba(14,165,233,0.12)",
     iconBorder: "rgba(14,165,233,0.3)",
     icon: (
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-        <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+        <path d="M7 8h10M7 12h6M7 16h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
   },
   {
-    title: "Digital Twin Concept",
-    desc: "Every physical sensor reading is mirrored into a digital database — building a queryable history of the user's environment, gait patterns, and alert events over time.",
+    title: "MQTT → REST bridge",
+    desc: "The mqtt-worker service subscribes to Mosquitto, then POSTs telemetry to /api/devices/<serial>/telemetry using a shared DEVICE_API_KEY. Set DEVICE_SERIAL on the worker to the same MAC you registered — that’s how hat traffic maps to the correct patient row.",
     color: "#a855f7",
     iconBg: "rgba(168,85,247,0.12)",
     iconBorder: "rgba(168,85,247,0.3)",
     icon: (
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-        <rect x="2" y="3" width="9" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
-        <rect x="13" y="3" width="9" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
-        <path d="M7 8h0M17 8h0M7 12h0M17 12h0M7 16h0M17 16h0" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+        <path d="M4 12h4l2-6 4 12 2-6h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
   {
-    title: "Caregiver Dashboard",
-    desc: "Live GPS map tracking, severity-graded alert logs (CRITICAL / NEAR / MEDIUM), and multi-channel notifications — in-app, email, and SMS — keep caregivers informed at all times.",
+    title: "Caregiver web app",
+    desc: "Dashboard shows ESP last distance, last seen, and phone ping times. Map tracking plots each patient’s latest GPS with auto-refresh and minutes since last update. Motion alerts list phone accelerometer “possible accident” events (heuristic, not medical).",
     color: "#f59e0b",
     iconBg: "rgba(245,158,11,0.12)",
     iconBorder: "rgba(245,158,11,0.3)",
@@ -396,6 +394,32 @@ const FEATURES = [
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "Android Track app",
+    desc: "Expo app (Track tab) sends foreground GPS to the same API as MQTT phone/location. While tracking, it runs accelerometer heuristics for sudden impacts / possible falls, posts to /api/phone/motion, and offers an “I’m OK” snooze. My users shows each patient’s ID and server URL/key hints for setup.",
+    color: "#22c55e",
+    iconBg: "rgba(34,197,94,0.12)",
+    iconBorder: "rgba(34,197,94,0.3)",
+    icon: (
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" strokeWidth="2" />
+        <circle cx="12" cy="18" r="1" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    title: "Docker deployment",
+    desc: "docker-compose runs PostgreSQL, Prisma migrations + seed, Next.js web, Eclipse Mosquitto, and the mqtt-worker — ready for a home server, Pi, or Portainer stack on the same network as your ESP32 and phones.",
+    color: "#94a3b8",
+    iconBg: "rgba(148,163,184,0.12)",
+    iconBorder: "rgba(148,163,184,0.3)",
+    icon: (
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <path d="M4 7h16M4 12h10M4 17h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
       </svg>
     ),
   },
@@ -414,12 +438,11 @@ function FeaturesSection() {
           </div>
           <h2 className="text-4xl font-extrabold text-white mb-4">Built for the Real World</h2>
           <p className="text-slate-400 max-w-2xl mx-auto">
-            Every feature is designed around a single goal: give the visually impaired more
-            confidence, safety, and independence on the move.
+            From the hat on the head to the caregiver browser and the companion phone — one stack for sensing, identity, and peace of mind.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
           {FEATURES.map((f, i) => (
             <div
               key={i}
@@ -442,6 +465,90 @@ function FeaturesSection() {
               <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Platform (what we shipped) ─────────────────────────────────────────────
+
+function PlatformSection() {
+  const bullets = [
+    {
+      title: "Patients & hats",
+      body: "Caregivers add blind users under My users and register each ESP32 hat using its Wi‑Fi MAC. That MAC is the device serial in PostgreSQL — so every distance sample and “last seen” belongs to the correct person.",
+    },
+    {
+      title: "Same network, simple routing",
+      body: "ESP32, Raspberry Pi / Mosquitto, laptop (Next.js), and phones can share one LAN. The mqtt-worker points at your web API (APP_BASE_URL) and uses DEVICE_SERIAL equal to the registered MAC so MQTT topics map cleanly to REST.",
+    },
+    {
+      title: "Phone side",
+      body: "The Android Track app sends GPS to /api/phone/location and optional motion events to /api/phone/motion. The Pi can also publish JSON on MQTT topics phone/location and phone/motion — the worker forwards both to the same APIs.",
+    },
+    {
+      title: "Caregiver visibility",
+      body: "Dashboard summarizes ESP telemetry and phone pings. Map tracking shows live markers with time-since-update. A motion table lists accelerometer-based alerts for follow-up (not a certified medical device).",
+    },
+  ];
+  return (
+    <section
+      id="platform"
+      className="py-24 px-6"
+      style={{ borderTop: "1px solid rgba(51,65,85,0.4)", background: "rgba(13,20,36,0.45)" }}
+    >
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-14 animate-on-scroll">
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-slate-400 text-xs font-semibold tracking-wide mb-4"
+            style={{ border: "1px solid rgba(51,65,85,0.7)", background: "rgba(30,41,59,0.5)" }}
+          >
+            What we built
+          </div>
+          <h2 className="text-4xl font-extrabold text-white mb-4">Caregiver platform & connectivity</h2>
+          <p className="text-slate-400 max-w-3xl mx-auto text-sm leading-relaxed">
+            BlindHat is not only the hat firmware — it is a full loop: MQTT ingestion, secure device APIs, caregiver UI,
+            optional Docker deployment, and an Android companion for location plus motion heuristics. Sign in to try
+            My users, the map, and the dashboards against your own stack.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-5">
+          {bullets.map((b, i) => (
+            <div
+              key={i}
+              className="animate-on-scroll rounded-2xl p-6"
+              style={{
+                background: "rgba(13,20,36,0.92)",
+                border: "1px solid rgba(51,65,85,0.55)",
+                transitionDelay: `${i * 70}ms`,
+              }}
+            >
+              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <span
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-extrabold text-[#060a0f]"
+                  style={{ background: "linear-gradient(135deg, #1D9E75, #0f7a5a)" }}
+                >
+                  {i + 1}
+                </span>
+                {b.title}
+              </h3>
+              <p className="text-slate-400 text-sm leading-relaxed">{b.body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div
+          className="mt-10 animate-on-scroll rounded-2xl p-6 text-center"
+          style={{ border: "1px dashed rgba(29,158,117,0.35)", background: "rgba(29,158,117,0.06)" }}
+        >
+          <p className="text-slate-300 text-sm">
+            <span className="font-semibold text-[#1D9E75]">Tip:</span> after signing in, open{" "}
+            <span className="font-mono text-slate-200">/caregiver/my-users</span> for MAC registration & patient IDs,{" "}
+            <span className="font-mono text-slate-200">/caregiver/map</span> for live GPS, and{" "}
+            <span className="font-mono text-slate-200">/caregiver/dashboard</span> for ESP + phone + motion summaries.
+          </p>
         </div>
       </div>
     </section>
@@ -546,8 +653,8 @@ const STEPS = [
     ),
   },
   {
-    title: "Ingest & Evaluate",
-    desc: "The mqtt-worker bridge forwards telemetry to the REST API, which classifies alert severity and stores it in PostgreSQL.",
+    title: "Ingest & evaluate",
+    desc: "The mqtt-worker forwards payloads to the Next.js REST API (/api/devices/<MAC>/telemetry) using DEVICE_API_KEY. PostgreSQL + Prisma store readings, thresholds (CRITICAL / NEAR / MEDIUM), and caregiver notifications for in-app follow-up.",
     color: "#a855f7",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -557,8 +664,8 @@ const STEPS = [
     ),
   },
   {
-    title: "Alert & Notify",
-    desc: "Caregivers receive real-time in-app, email, or SMS notifications. GPS coordinates are logged for map tracking.",
+    title: "Caregiver visibility",
+    desc: "Caregivers sign in to see assigned patients, ESP last distance, phone GPS on the map (with minutes since last ping), and motion-alert rows from the Android app or MQTT phone/motion.",
     color: "#f59e0b",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -640,12 +747,14 @@ function TechStackSection() {
     { name: "Passive Buzzer", role: "Auditory proximity feedback" },
   ];
   const software = [
-    { name: "Next.js 14", role: "React framework, App Router, SSR" },
-    { name: "PostgreSQL 16", role: "Persistent sensor & user data" },
-    { name: "Prisma ORM", role: "Type-safe database client" },
-    { name: "MQTT / Mosquitto", role: "IoT message broker (port 1883)" },
-    { name: "NextAuth.js", role: "JWT-based auth (Admin & Caregiver)" },
-    { name: "Leaflet Maps", role: "GPS tracking visualization" },
+    { name: "Next.js 14", role: "React framework, App Router, caregiver + admin routes" },
+    { name: "PostgreSQL 16", role: "Devices, patients, location pings, motion alerts" },
+    { name: "Prisma ORM", role: "Type-safe database client & migrations" },
+    { name: "Docker Compose", role: "Web, db, migrate, Mosquitto, mqtt-worker" },
+    { name: "MQTT / Mosquitto", role: "Hat topics + phone/location + phone/motion" },
+    { name: "NextAuth.js", role: "Caregiver & admin sign-in" },
+    { name: "Leaflet Maps", role: "Caregiver map with live refresh" },
+    { name: "Expo (Android)", role: "Track app — GPS + accelerometer safety" },
   ];
 
   return (
@@ -765,7 +874,8 @@ function CTASection() {
             </div>
             <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-4">Ready to Monitor?</h2>
             <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
-              Sign in to the caregiver or admin dashboard to manage devices, view live alerts, and track users on the GPS map.
+              Sign in to assign patients, register hat MACs, watch MQTT-fed distance on the dashboard, open the live map
+              for phone GPS, and review motion hints from the Android Track app — all in one BlindHat deployment.
             </p>
             <Link
               href="/login"
@@ -809,6 +919,7 @@ function Footer() {
         </div>
         <div className="flex items-center gap-6">
           <a href="#features" className="text-slate-600 hover:text-slate-400 text-xs transition-colors">Features</a>
+          <a href="#platform" className="text-slate-600 hover:text-slate-400 text-xs transition-colors">Platform</a>
           <a href="#how-it-works" className="text-slate-600 hover:text-slate-400 text-xs transition-colors">How It Works</a>
           <a href="#hardware" className="text-slate-600 hover:text-slate-400 text-xs transition-colors">Hardware</a>
           <Link href="/login" className="text-slate-600 hover:text-[#1D9E75] text-xs transition-colors">Sign In</Link>
@@ -847,6 +958,7 @@ export default function LandingPage() {
       <HeroSection />
       <StatsBar />
       <FeaturesSection />
+      <PlatformSection />
       <GallerySection />
       <HowItWorksSection />
       <TechStackSection />

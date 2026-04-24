@@ -65,7 +65,8 @@ services:
       MQTT_TOPIC_ACCEL: senzor/acceleratie
       MQTT_TOPIC_PHONE_LOCATION: phone/location
       MQTT_TOPIC_PHONE_MOTION: phone/motion
-      # Must match a registered Device.serialNumber (e.g. ESP MAC from My users)
+      # Optional fallback for plain numeric distance MQTT payloads. Prefer JSON on the wire:
+      # {"distanceCm":40,"deviceMac":"98:A3:16:7E:57:C0"} — then each ESP can identify itself without changing this.
       DEVICE_SERIAL: ${DEVICE_SERIAL}
       APP_BASE_URL: http://web:3000
       DEVICE_API_KEY: "change-me"

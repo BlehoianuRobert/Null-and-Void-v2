@@ -67,9 +67,19 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
         </div>
       ) : null}
       <p className="mt-2 text-sm text-slate-400">
-        Add a patient (blind user profile). You can also add the ESP32 Wi‑Fi MAC now, or register it later.
-        Distance and accelerometer values from MQTT appear under each device once the worker{" "}
-        <span className="text-slate-300">DEVICE_SERIAL</span> matches that MAC.
+        Add a patient (blind user profile). You can also add the ESP32 Wi‑Fi MAC now, or register it later. Hat
+        telemetry reaches the web app when the MQTT worker can resolve the device: either set{" "}
+        <span className="font-mono text-slate-300">DEVICE_SERIAL</span> to that MAC for plain number payloads, or have
+        the ESP publish <span className="font-mono text-slate-300">JSON</span> with the same MAC (see below) — then no{" "}
+        <span className="font-mono text-slate-300">DEVICE_SERIAL</span> change is needed in Portainer when you add a new
+        hat.
+      </p>
+      <p className="mt-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 font-mono text-[11px] text-slate-400">
+        MQTT distance example:{" "}
+        <span className="text-slate-200">{`{"distanceCm":40,"deviceMac":"98:A3:16:7E:57:C0"}`}</span> — also accepts{" "}
+        <span className="text-slate-300">mac</span>, <span className="text-slate-300">serial</span>, or{" "}
+        <span className="text-slate-300">serialNumber</span>. Keys <span className="text-slate-300">distanta</span> /{" "}
+        <span className="text-slate-300">distance</span> work for the numeric field.
       </p>
 
       <div className="mt-6 rounded-xl border border-[#1D9E75]/40 bg-slate-950/80 p-5">
@@ -104,9 +114,11 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
             </p>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">EXPO_PUBLIC_BLIND_USER_ID</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Patient ID on the phone</dt>
             <dd className="mt-1 text-slate-400">
-              Copy from each patient’s card — <span className="text-slate-200">one phone per patient ID</span>.
+              Copy from each patient’s card below. On the Android <span className="text-slate-200">Track</span> tab the
+              caregiver can paste it into the <span className="text-slate-200">Patient ID</span> field (saved on that
+              device). Optional build env: <span className="font-mono text-slate-300">EXPO_PUBLIC_BLIND_USER_ID</span>.
             </dd>
           </div>
         </dl>

@@ -11,8 +11,10 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMotionUsageDescription": "Accelerometer is used to detect possible falls while tracking is on."
-      }
+        "NSMotionUsageDescription": "Accelerometer is used to detect possible falls while tracking is on.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.dani123456123.android"
     },
     "android": {
       "usesCleartextTraffic": true,
@@ -24,7 +26,11 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.dani123456123.android"
+      "package": "com.dani123456123.android",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",

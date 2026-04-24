@@ -1,7 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Accelerometer } from 'expo-sensors';
 import * as Location from 'expo-location';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -11,16 +12,20 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
-/** Defaults match typical Docker deploy; override with EXPO_PUBLIC_* in android/.env or EAS secrets. */
+/** Defaults match your stack; override with EXPO_PUBLIC_* in android/.env or EAS secrets. */
 const DEFAULT_API_BASE = 'http://10.136.37.252:3000';
-const DEFAULT_DEVICE_API_KEY = 'change-me';
+const DEFAULT_DEVICE_API_KEY =
+  '69d494dd6070d4c26e582c3cfd80e725eb1c44ea4765ffe1af9057b30119ce61';
+
+const STORAGE_PATIENT_ID = 'blindhat_patient_id';
 
 const API_BASE = (process.env.EXPO_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE).replace(/\/$/, '');
 const DEVICE_API_KEY = process.env.EXPO_PUBLIC_DEVICE_API_KEY ?? DEFAULT_DEVICE_API_KEY;
-const BLIND_USER_ID = (process.env.EXPO_PUBLIC_BLIND_USER_ID ?? '').trim();
+const ENV_BLIND_USER_ID = (process.env.EXPO_PUBLIC_BLIND_USER_ID ?? '').trim();
 
 const MOTION_COOLDOWN_MS = 90_000;
 const SUPPRESS_AFTER_OK_MS = 10 * 60 * 1000;
@@ -77,6 +82,9 @@ export default function TrackScreen() {
   const [status, setStatus] = useState<string>('');
   const [lastOk, setLastOk] = useState<string | null>(null);
   const [lastErr, setLastErr] = useState<string | null>(null);
+  const [patientIdInput, setPatientIdInput] = useState('');
+  const [idReady, setIdReady] = useState(false);
+  const [saveHint, setSaveHint] = useState('');
   const [fallModal, setFallModal] = useState<{ visible: boolean; detail: string }>({
     visible: false,
     detail: '',
@@ -89,7 +97,32 @@ export default function TrackScreen() {
   const prevMagRef = useRef<number | null>(null);
   const lastLowGAtRef = useRef<number | null>(null);
 
-  const configOk = Boolean(BLIND_USER_ID);
+  useEffect(() => {
+    void AsyncStorage.getItem(STORAGE_PATIENT_ID).then((stored) => {
+      if (stored && stored.trim()) setPatientIdInput(stored.trim());
+      else if (ENV_BLIND_USER_ID) setPatientIdInput(ENV_BLIND_USER_ID);
+      setIdReady(true);
+    });
+  }, []);
+
+  const effectivePatientId = useMemo(
+    () => patientIdInput.trim() || ENV_BLIND_USER_ID,
+    [patientIdInput]
+  );
+
+  const configOk = Boolean(effectivePatientId);
+
+  const savePatientId = useCallback(async () => {
+    const v = patientIdInput.trim();
+    await AsyncStorage.setItem(STORAGE_PATIENT_ID, v);
+    setSaveHint(v ? 'Saved on this phone' : 'Cleared');
+    setTimeout(() => setSaveHint(''), 2500);
+  }, [patientIdInput]);
+
+  const keyPreview =
+    DEVICE_API_KEY.length > 24
+      ? `${DEVICE_API_KEY.slice(0, 10)}…${DEVICE_API_KEY.slice(-6)}`
+      : DEVICE_API_KEY;
 
   const stop = useCallback(async () => {
     subRef.current?.remove();
@@ -112,7 +145,7 @@ export default function TrackScreen() {
     };
     const sentAt = new Date().toISOString();
     await postPhoneLocation({
-      blindUserId: BLIND_USER_ID,
+      blindUserId: effectivePatientId,
       latitude: loc.coords.latitude,
       longitude: loc.coords.longitude,
       accuracyM: loc.coords.accuracy ?? undefined,
@@ -120,13 +153,14 @@ export default function TrackScreen() {
       sentAt,
     });
     setLastOk(new Date().toLocaleTimeString());
-  }, [configOk]);
+  }, [configOk, effectivePatientId]);
 
   const start = useCallback(async () => {
     if (!configOk) {
-      setLastErr('Set the patient ID: add EXPO_PUBLIC_BLIND_USER_ID (from web → My users) in android/.env, then restart with npx expo start -c');
+      setLastErr('Enter the patient ID above (from caregiver web → My users → Connect this patient), then Save.');
       return;
     }
+    await AsyncStorage.setItem(STORAGE_PATIENT_ID, effectivePatientId);
     setLastErr(null);
     const perm = await Location.requestForegroundPermissionsAsync();
     if (perm.status !== 'granted') {
@@ -154,7 +188,7 @@ export default function TrackScreen() {
         try {
           const sentAt = new Date().toISOString();
           await postPhoneLocation({
-            blindUserId: BLIND_USER_ID,
+            blindUserId: effectivePatientId,
             latitude: loc.coords.latitude,
             longitude: loc.coords.longitude,
             accuracyM: loc.coords.accuracy ?? undefined,
@@ -170,7 +204,7 @@ export default function TrackScreen() {
     );
     setTracking(true);
     setStatus('Tracking (GPS + fall sensor)');
-  }, [configOk, sendOnce]);
+  }, [configOk, effectivePatientId, sendOnce]);
 
   useEffect(() => {
     return () => {
@@ -231,7 +265,7 @@ export default function TrackScreen() {
         const triggeredAt = new Date().toISOString();
 
         void postPhoneMotion({
-          blindUserId: BLIND_USER_ID,
+          blindUserId: effectivePatientId,
           peakMagnitudeMs2: mag,
           deltaMs2: delta,
           reason,
@@ -259,7 +293,7 @@ export default function TrackScreen() {
       prevMagRef.current = null;
       lastLowGAtRef.current = null;
     };
-  }, [tracking, configOk]);
+  }, [tracking, configOk, effectivePatientId]);
 
   const dismissFallModal = () => {
     suppressUntilRef.current = Date.now() + SUPPRESS_AFTER_OK_MS;
@@ -276,27 +310,42 @@ export default function TrackScreen() {
         minutes.
       </Text>
 
-      {!configOk ? (
-        <View style={styles.warn}>
-          <Text style={styles.warnTitle}>Set the patient ID on this phone</Text>
-          <Text style={styles.body}>
-            API URL defaults to <Text style={styles.mono}>{DEFAULT_API_BASE}</Text> and device key to{' '}
-            <Text style={styles.mono}>{DEFAULT_DEVICE_API_KEY}</Text> (same as Docker compose). Override with{' '}
-            <Text style={styles.mono}>EXPO_PUBLIC_*</Text> in <Text style={styles.mono}>android/.env</Text> if needed.
-          </Text>
-          <Text style={styles.monoSmall}>EXPO_PUBLIC_BLIND_USER_ID</Text>
-          <Text style={styles.hint}>
-            Required: copy from web app → caregiver → My users → “Connect this patient” for the blind user.
-          </Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Patient ID (on this phone)</Text>
+        <Text style={styles.body}>
+          The caregiver opens <Text style={styles.bold}>My users</Text> on the web, finds the blind person, and copies
+          the ID from <Text style={styles.bold}>Connect this patient</Text>. Paste it here on this phone, then tap{' '}
+          <Text style={styles.bold}>Save</Text>.
+        </Text>
+        <TextInput
+          value={patientIdInput}
+          onChangeText={setPatientIdInput}
+          placeholder="e.g. clxxxxxxxxxxxxxxxxxx"
+          placeholderTextColor="#64748b"
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={idReady}
+          style={styles.input}
+        />
+        <View style={styles.row}>
+          <Pressable style={styles.btnSecondary} onPress={() => void savePatientId()}>
+            <Text style={styles.btnSecondaryText}>Save patient ID</Text>
+          </Pressable>
+          {saveHint ? <Text style={styles.ok}>{saveHint}</Text> : null}
         </View>
-      ) : (
+        {!configOk && idReady ? (
+          <Text style={styles.err}>Enter and save a patient ID before starting tracking.</Text>
+        ) : null}
+      </View>
+
+      {configOk ? (
         <View style={styles.info}>
           <Text style={styles.infoText}>
-            Using <Text style={styles.mono}>{API_BASE}</Text> • key <Text style={styles.mono}>{DEVICE_API_KEY}</Text> •
-            patient <Text style={styles.monoSmallInline}>{BLIND_USER_ID}</Text>
+            Server <Text style={styles.mono}>{API_BASE}</Text> • device key <Text style={styles.mono}>{keyPreview}</Text>{' '}
+            • patient <Text style={styles.monoSmallInline}>{effectivePatientId}</Text>
           </Text>
         </View>
-      )}
+      ) : null}
 
       <View style={styles.row}>
         {!tracking ? (
@@ -383,6 +432,27 @@ const styles = StyleSheet.create({
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
     fontSize: 12,
     color: '#cbd5e1',
+  },
+  card: {
+    borderWidth: 1,
+    borderColor: 'rgba(29,158,117,0.35)',
+    backgroundColor: 'rgba(15,23,42,0.95)',
+    borderRadius: 12,
+    padding: 14,
+    gap: 10,
+  },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: '#86efac' },
+  input: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#f8fafc',
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    backgroundColor: '#0f172a',
   },
   hint: { fontSize: 12, color: '#64748b', marginTop: 2 },
   warn: {
