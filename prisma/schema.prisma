@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CAREGIVER
+  BLIND_USER
+}
+
+enum Severity {
+  CRITICAL
+  NEAR
+  MEDIUM
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+}
+
+model User {
+  id           String  @id @default(cuid())
+  name         String
+  email        String? @unique
+  passwordHash String?
+  role         Role
+  phone        String?
+  notes        String?
+  isActive     Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  caregiverRelationships CareRelationship[] @relation("CaregiverRelationships")
+  blindUserRelationships CareRelationship[] @relation("BlindUserRelationships")
+
+  devices   Device[]   @relation("DeviceOwner")
+  alertLogs AlertLog[] @relation("AlertUser")
+
+  acknowledgedAlerts AlertLog[] @relation("AlertAcknowledgedBy")
+  notifications      CaregiverNotification[] @relation("CaregiverNotifications")
+
+  @@index([role])
+  @@index([isActive])
+}
+
+model CareRelationship {
+  id          String   @id @default(cuid())
+  caregiverId String
+  blindUserId String
+  assignedAt  DateTime @default(now())
+  isActive    Boolean  @default(true)
+  notes       String?
+
+  caregiver User @relation("CaregiverRelationships", fields: [caregiverId], references: [id], onDelete: Cascade)
+  blindUser User @relation("BlindUserRelationships", fields: [blindUserId], references: [id], onDelete: Cascade)
+
+  @@unique([caregiverId, blindUserId])
+  @@index([caregiverId])
+  @@index([blindUserId])
+  @@index([isActive])
+}
+
+model Device {
+  id               String   @id @default(cuid())
+  serialNumber     String   @unique
+  label            String
+  firmwareVersion  String?
+  batteryLevel     Int?
+  isOnline         Boolean  @default(false)
+  lastSeenAt       DateTime?
+  ownerId          String
+  thresholdCritical Int     @default(30)
+  thresholdNear     Int     @default(80)
+  thresholdMedium   Int     @default(150)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  owner    User       @relation("DeviceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  alertLogs AlertLog[]
+
+  @@index([ownerId])
+  @@index([isOnline])
+  @@index([lastSeenAt])
+}
+
+model AlertLog {
+  id           String    @id @default(cuid())
+  deviceId     String
+  userId       String
+  distanceCm   Int
+  severity     Severity
+  triggeredAt  DateTime  @default(now())
+  latitude     Float?
+  longitude    Float?
+  acknowledgedById String?
+  acknowledgedAt   DateTime?
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  user   User   @relation("AlertUser", fields: [userId], references: [id], onDelete: Cascade)
+  acknowledgedBy User? @relation("AlertAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  notifications CaregiverNotification[]
+
+  @@index([deviceId])
+  @@index([userId])
+  @@index([severity])
+  @@index([triggeredAt])
+  @@index([acknowledgedById])
+}
+
+model CaregiverNotification {
+  id          String   @id @default(cuid())
+  caregiverId String
+  alertLogId  String
+  sentAt      DateTime @default(now())
+  readAt      DateTime?
+  channel     NotificationChannel @default(IN_APP)
+
+  caregiver User    @relation("CaregiverNotifications", fields: [caregiverId], references: [id], onDelete: Cascade)
+  alertLog  AlertLog @relation(fields: [alertLogId], references: [id], onDelete: Cascade)
+
+  @@index([caregiverId])
+  @@index([readAt])
+  @@index([sentAt])
+}
+

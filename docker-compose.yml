@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: blindhat
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/blindhat?schema=public
+    command: >
+      sh -c "npx prisma migrate deploy && npx prisma db seed"
+    restart: "no"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - db
+      - migrate
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/blindhat?schema=public
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: "change-me"
+      DEVICE_API_KEY: "change-me"
+      PUSHER_APP_ID: ""
+      PUSHER_KEY: ""
+      PUSHER_SECRET: ""
+      PUSHER_CLUSTER: ""
+    ports:
+      - "3000:3000"
+
+volumes:
+  db_data:
