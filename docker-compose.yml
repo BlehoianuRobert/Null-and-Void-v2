@@ -1,7 +1,7 @@
-# Portainer: add variables in the stack "Environment variables" box (they fill ${VAR} here).
-#   DEVICE_SERIAL=98:A3:16:7E:57:C0   ← required if ESP sends a plain number on senzor/distanta
-#   DEVICE_API_KEY=...              ← same secret as web (optional if you keep change-me)
-# Or on any host: copy docker-compose.override.example.yml → docker-compose.override.yml and edit.
+# Portainer: optional stack "Environment variables" override ${VAR} below.
+#   DEVICE_SERIAL=...   (defaults to 98:A3:16:7E:57:C0 for mqtt-worker if unset)
+#   DEVICE_API_KEY=... (defaults to change-me; set same on web + worker for production)
+# Or: docker-compose.override.yml — see docker-compose.override.example.yml
 
 services:
   mqtt-broker:
@@ -70,9 +70,8 @@ services:
       MQTT_TOPIC_ACCEL: senzor/acceleratie
       MQTT_TOPIC_PHONE_LOCATION: phone/location
       MQTT_TOPIC_PHONE_MOTION: phone/motion
-      # Optional fallback for plain numeric distance MQTT payloads. Prefer JSON on the wire:
-      # {"distanceCm":40,"deviceMac":"98:A3:16:7E:57:C0"} — then each ESP can identify itself without changing this.
-      DEVICE_SERIAL: ${DEVICE_SERIAL:-}
+      # Plain numeric MQTT payloads: must match Device.serialNumber in My users. Override via stack env DEVICE_SERIAL if you change hats.
+      DEVICE_SERIAL: ${DEVICE_SERIAL:-98:A3:16:7E:57:C0}
       APP_BASE_URL: http://web:3000
       DEVICE_API_KEY: ${DEVICE_API_KEY:-change-me}
 
