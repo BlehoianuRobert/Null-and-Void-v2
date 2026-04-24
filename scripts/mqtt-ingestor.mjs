@@ -6,16 +6,23 @@ const MQTT_TOPIC_ACCEL = process.env.MQTT_TOPIC_ACCEL || "senzor/acceleratie";
 const MQTT_TOPIC_PHONE_LOCATION = process.env.MQTT_TOPIC_PHONE_LOCATION || "phone/location";
 
 // Because your ESP32 publishes without a device id in the topic/payload,
-// we map the incoming MQTT messages to ONE registered device serial number.
-// If you have multiple devices later, change ESP32 topics to include serial:
-//   devices/<serial>/distanta  and  devices/<serial>/acceleratie
-const DEVICE_SERIAL = process.env.DEVICE_SERIAL || "ESP32_Senzori";
+// we map the incoming MQTT messages to ONE registered device serial number
+// (must match Device.serialNumber in the web app — usually the ESP Wi‑Fi MAC).
+// For multiple devices later, use per-serial topics, e.g. devices/<serial>/distanta
+const DEVICE_SERIAL = (process.env.DEVICE_SERIAL || "").trim();
 
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://web:3000";
 const DEVICE_API_KEY = process.env.DEVICE_API_KEY || "";
 
 if (!DEVICE_API_KEY) {
   console.error("Missing DEVICE_API_KEY env var (must match web app DEVICE_API_KEY).");
+  process.exit(1);
+}
+
+if (!DEVICE_SERIAL) {
+  console.error(
+    "Missing DEVICE_SERIAL: set it to the same value as the device serial in the app (e.g. ESP32 Wi‑Fi MAC)."
+  );
   process.exit(1);
 }
 

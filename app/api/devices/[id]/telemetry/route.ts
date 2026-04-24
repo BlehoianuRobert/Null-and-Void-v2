@@ -22,6 +22,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   const body = (await req.json().catch(() => null)) as
     | {
         distanceCm?: number;
+        accelX?: number;
         batteryLevel?: number;
         firmwareVersion?: string;
         latitude?: number;
@@ -48,25 +49,30 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   if (!device) return NextResponse.json({ error: "Device not registered" }, { status: 404 });
 
   const now = new Date();
+  const distanceCm = Math.max(0, Math.floor(body.distanceCm));
+  const lastAccelX =
+    typeof body.accelX === "number" && Number.isFinite(body.accelX) ? body.accelX : undefined;
 
   await prisma.device.update({
     where: { serialNumber },
     data: {
       isOnline: true,
       lastSeenAt: now,
+      lastDistanceCm: distanceCm,
+      ...(lastAccelX !== undefined ? { lastAccelX } : {}),
       batteryLevel: typeof body.batteryLevel === "number" ? body.batteryLevel : undefined,
       firmwareVersion: typeof body.firmwareVersion === "string" ? body.firmwareVersion : undefined,
     },
   });
-
-  const distanceCm = Math.max(0, Math.floor(body.distanceCm));
 
   let severity: "CRITICAL" | "NEAR" | "MEDIUM" | null = null;
   if (distanceCm <= device.thresholdCritical) severity = "CRITICAL";
   else if (distanceCm <= device.thresholdNear) severity = "NEAR";
   else if (distanceCm <= device.thresholdMedium) severity = "MEDIUM";
 
-  if (!severity) return NextResponse.json({ ok: true, triggered: false });
+  if (!severity) {
+    return NextResponse.json({ ok: true, triggered: false, distanceCm });
+  }
 
   const alert = await prisma.alertLog.create({
     data: {

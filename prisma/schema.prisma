@@ -74,6 +74,8 @@ model Device {
   label            String
   firmwareVersion  String?
   batteryLevel     Int?
+  lastDistanceCm   Int?
+  lastAccelX       Float?
   isOnline         Boolean  @default(false)
   lastSeenAt       DateTime?
   ownerId          String

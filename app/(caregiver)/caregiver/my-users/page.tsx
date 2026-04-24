@@ -22,7 +22,18 @@ export default async function CaregiverMyUsersPage() {
           name: true,
           phone: true,
           notes: true,
-          devices: { select: { id: true, serialNumber: true, label: true } },
+          devices: {
+            select: {
+              id: true,
+              serialNumber: true,
+              label: true,
+              isOnline: true,
+              lastSeenAt: true,
+              batteryLevel: true,
+              lastDistanceCm: true,
+              lastAccelX: true,
+            },
+          },
         },
       },
     },
@@ -33,6 +44,8 @@ export default async function CaregiverMyUsersPage() {
       <h1 className="text-xl font-semibold">My users</h1>
       <p className="mt-2 text-sm text-slate-400">
         Add a patient (blind user profile). You can also add the ESP32 Wi‑Fi MAC now, or register it later.
+        Distance and accelerometer values from MQTT appear under each device once the worker{" "}
+        <span className="text-slate-300">DEVICE_SERIAL</span> matches that MAC.
       </p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -197,9 +210,43 @@ export default async function CaregiverMyUsersPage() {
                     </button>
                   </form>
                   {r.blindUser.devices.length > 0 ? (
-                    <div className="mt-3 text-xs text-slate-400">
-                      Existing devices:{" "}
-                      {r.blindUser.devices.map((d) => `${d.label} (${d.serialNumber})`).join(", ")}
+                    <div className="mt-4 space-y-3 rounded-lg border border-slate-900 bg-slate-950/50 p-3">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Latest from ESP (MQTT)
+                      </div>
+                      {r.blindUser.devices.map((d) => (
+                        <div key={d.id} className="border-t border-slate-900 pt-3 first:border-t-0 first:pt-0">
+                          <div className="text-sm font-medium text-slate-200">
+                            {d.label}{" "}
+                            <span className="font-normal text-slate-500">({d.serialNumber})</span>
+                          </div>
+                          <dl className="mt-2 grid gap-1 text-xs text-slate-400 sm:grid-cols-2">
+                            <div>
+                              <dt className="text-slate-500">Last distance</dt>
+                              <dd className="font-mono text-slate-200">
+                                {d.lastDistanceCm != null ? `${d.lastDistanceCm} cm` : "—"}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-slate-500">Last accel X</dt>
+                              <dd className="font-mono text-slate-200">
+                                {d.lastAccelX != null ? String(d.lastAccelX) : "—"}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-slate-500">Last seen</dt>
+                              <dd>{d.lastSeenAt ? d.lastSeenAt.toLocaleString() : "—"}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-slate-500">Online / battery</dt>
+                              <dd>
+                                {d.isOnline ? "Online" : "Offline"}
+                                {d.batteryLevel != null ? ` • ${d.batteryLevel}%` : ""}
+                              </dd>
+                            </div>
+                          </dl>
+                        </div>
+                      ))}
                     </div>
                   ) : null}
                 </div>

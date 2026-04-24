@@ -17,6 +17,30 @@ export default async function CaregiverDashboardPage() {
 
   const blindUserIds = relationships.map((r) => r.blindUserId);
 
+  const devicesByOwner =
+    blindUserIds.length > 0
+      ? await prisma.device.findMany({
+          where: { ownerId: { in: blindUserIds } },
+          select: {
+            ownerId: true,
+            serialNumber: true,
+            label: true,
+            lastDistanceCm: true,
+            lastAccelX: true,
+            lastSeenAt: true,
+            isOnline: true,
+            batteryLevel: true,
+          },
+        })
+      : [];
+
+  const devicesGrouped = new Map<string, typeof devicesByOwner>();
+  for (const d of devicesByOwner) {
+    const list = devicesGrouped.get(d.ownerId) ?? [];
+    list.push(d);
+    devicesGrouped.set(d.ownerId, list);
+  }
+
   const lastPingByUser = blindUserIds.length
     ? await prisma.locationPing.findMany({
         where: { userId: { in: blindUserIds } },
@@ -98,21 +122,52 @@ export default async function CaregiverDashboardPage() {
             <thead className="text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="py-2 pr-3">Name</th>
+                <th className="py-2 pr-3">ESP last distance</th>
+                <th className="py-2 pr-3">ESP last seen</th>
                 <th className="py-2 pr-3">Last phone ping</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-900">
-              {relationships.map((r) => (
-                <tr key={r.blindUserId} className="text-slate-200">
-                  <td className="py-2 pr-3">{r.blindUser.name}</td>
-                  <td className="py-2 pr-3 text-slate-400">
-                    {lastPingAt.get(r.blindUserId)?.toLocaleString() ?? "—"}
-                  </td>
-                </tr>
-              ))}
+              {relationships.map((r) => {
+                const devs = devicesGrouped.get(r.blindUserId) ?? [];
+                const distSummary =
+                  devs.length === 0
+                    ? "—"
+                    : devs
+                        .map((d) =>
+                          d.lastDistanceCm != null
+                            ? `${d.label}: ${d.lastDistanceCm} cm`
+                            : `${d.label}: —`
+                        )
+                        .join("; ");
+                const seenSummary =
+                  devs.length === 0
+                    ? "—"
+                    : devs
+                        .map((d) =>
+                          d.lastSeenAt ? `${d.label}: ${d.lastSeenAt.toLocaleString()}` : `${d.label}: —`
+                        )
+                        .join("; ");
+
+                return (
+                  <tr key={r.blindUserId} className="text-slate-200">
+                    <td className="py-2 pr-3">{r.blindUser.name}</td>
+                    <td
+                      className="max-w-[220px] py-2 pr-3 text-xs text-slate-400"
+                      title={devs.map((d) => d.serialNumber).join(", ") || undefined}
+                    >
+                      {distSummary}
+                    </td>
+                    <td className="max-w-[220px] py-2 pr-3 text-xs text-slate-400">{seenSummary}</td>
+                    <td className="py-2 pr-3 text-slate-400">
+                      {lastPingAt.get(r.blindUserId)?.toLocaleString() ?? "—"}
+                    </td>
+                  </tr>
+                );
+              })}
               {relationships.length === 0 ? (
                 <tr>
-                  <td className="py-6 text-slate-400" colSpan={2}>
+                  <td className="py-6 text-slate-400" colSpan={4}>
                     No patients assigned yet.
                   </td>
                 </tr>
