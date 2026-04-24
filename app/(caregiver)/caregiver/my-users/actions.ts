@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect";
 
 const addPatientSchema = z.object({
   name: z.string().min(2),
@@ -66,17 +67,24 @@ export async function addPatientAction(input: unknown) {
     }
 
     revalidatePath("/caregiver/my-users");
-    redirect("/caregiver/my-users");
   } catch (e) {
+    if (isRedirectError(e)) throw e;
     console.error("ADD_PATIENT_ERROR", e);
     redirect("/caregiver/my-users?error=add-patient");
   }
+  redirect("/caregiver/my-users");
 }
 
 const registerDeviceSchema = z.object({
   blindUserId: z.string().min(1),
-  serialNumber: z.string().min(3),
-  label: z.string().min(2),
+  serialNumber: z
+    .string()
+    .transform((s) => s.trim())
+    .refine((s) => s.length >= 1, { message: "MAC / serial is required" }),
+  label: z
+    .string()
+    .optional()
+    .transform((s) => (s ?? "").trim() || "Hat device"),
 });
 
 const removePatientSchema = z.object({
@@ -97,11 +105,12 @@ export async function removePatientAction(input: unknown) {
     });
 
     revalidatePath("/caregiver/my-users");
-    redirect("/caregiver/my-users");
   } catch (e) {
+    if (isRedirectError(e)) throw e;
     console.error("REMOVE_PATIENT_ERROR", e);
     redirect("/caregiver/my-users?error=remove-patient");
   }
+  redirect("/caregiver/my-users");
 }
 
 export async function registerDeviceForPatientAction(input: unknown) {
@@ -140,10 +149,11 @@ export async function registerDeviceForPatientAction(input: unknown) {
     });
 
     revalidatePath("/caregiver/my-users");
-    redirect("/caregiver/my-users");
   } catch (e) {
+    if (isRedirectError(e)) throw e;
     console.error("REGISTER_DEVICE_ERROR", e);
     redirect("/caregiver/my-users?error=register-device");
   }
+  redirect("/caregiver/my-users");
 }
 

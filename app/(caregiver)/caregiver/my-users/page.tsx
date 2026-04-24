@@ -4,10 +4,23 @@ import { requireRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { addPatientAction, registerDeviceForPatientAction, removePatientAction } from "./actions";
 
-export default async function CaregiverMyUsersPage() {
+const errorMessages: Record<string, string> = {
+  "add-patient": "Could not add patient. Check the name (at least 2 characters) and try again.",
+  "register-device":
+    "Could not register the device. Enter the ESP32 Wi‑Fi MAC in the MAC field. Label is optional (defaults to “Hat device”).",
+  "remove-patient": "Could not remove this patient. Try again.",
+};
+
+type PageProps = { searchParams?: Record<string, string | string[] | undefined> };
+
+export default async function CaregiverMyUsersPage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions);
   requireRole(session, ["CAREGIVER"]);
   const caregiverId = session!.user.id;
+
+  const errorKey =
+    typeof searchParams?.error === "string" ? searchParams.error : undefined;
+  const errorBanner = errorKey ? errorMessages[errorKey] ?? "Something went wrong. Try again." : null;
 
   const relationships = await prisma.careRelationship.findMany({
     where: { caregiverId, isActive: true },
@@ -42,6 +55,14 @@ export default async function CaregiverMyUsersPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold">My users</h1>
+      {errorBanner ? (
+        <div
+          className="mt-4 rounded-lg border border-amber-900/60 bg-amber-950/40 px-4 py-3 text-sm text-amber-100"
+          role="alert"
+        >
+          {errorBanner}
+        </div>
+      ) : null}
       <p className="mt-2 text-sm text-slate-400">
         Add a patient (blind user profile). You can also add the ESP32 Wi‑Fi MAC now, or register it later.
         Distance and accelerometer values from MQTT appear under each device once the worker{" "}
@@ -158,6 +179,10 @@ export default async function CaregiverMyUsersPage() {
                         ? r.blindUser.devices.map((d) => d.serialNumber).join(", ")
                         : "— (not registered yet)"}
                     </div>
+                    <div className="mt-2 font-mono text-[11px] text-slate-500">
+                      Patient ID (phone app / MQTT):{" "}
+                      <span className="select-all text-slate-300">{r.blindUser.id}</span>
+                    </div>
                   </div>
                   <form
                     action={async () => {
@@ -199,7 +224,7 @@ export default async function CaregiverMyUsersPage() {
                     />
                     <input
                       name="label"
-                      placeholder="Label (e.g. Hat #1)"
+                      placeholder="Label (optional)"
                       className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-[#1D9E75]"
                     />
                     <button

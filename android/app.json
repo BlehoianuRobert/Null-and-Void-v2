@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -28,6 +29,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "This app sends your location to your caregiver map while tracking is on.",
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ],
       [
         "expo-splash-screen",
         {
