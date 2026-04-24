@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { addPatientAction, registerDeviceForPatientAction } from "./actions";
+import { addPatientAction, registerDeviceForPatientAction, removePatientAction } from "./actions";
 
 export default async function CaregiverMyUsersPage() {
   const session = await getServerSession(authOptions);
@@ -110,11 +110,24 @@ export default async function CaregiverMyUsersPage() {
                       Phone: {r.blindUser.phone ?? "—"} • Devices: {r.blindUser.devices.length}
                     </div>
                   </div>
+                  <form
+                    action={async () => {
+                      "use server";
+                      await removePatientAction({ blindUserId: r.blindUser.id });
+                    }}
+                  >
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-red-900/60 bg-slate-950 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-950/30"
+                    >
+                      Remove
+                    </button>
+                  </form>
                 </div>
 
                 <div className="mt-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Register device (ESP32 serial)
+                    Register device (use ESP32 WiFi MAC as serial)
                   </div>
                   <form
                     action={async (formData) => {
@@ -132,7 +145,7 @@ export default async function CaregiverMyUsersPage() {
                     <input type="hidden" name="blindUserId" value={r.blindUser.id} />
                     <input
                       name="serialNumber"
-                      placeholder="Serial number"
+                      placeholder="MAC (e.g. 24:6F:28:AA:BB:CC)"
                       className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-[#1D9E75]"
                     />
                     <input

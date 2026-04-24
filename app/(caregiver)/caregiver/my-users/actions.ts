@@ -59,6 +59,31 @@ const registerDeviceSchema = z.object({
   label: z.string().min(2),
 });
 
+const removePatientSchema = z.object({
+  blindUserId: z.string().min(1),
+});
+
+export async function removePatientAction(input: unknown) {
+  const session = await getServerSession(authOptions);
+  requireRole(session, ["CAREGIVER"]);
+  const caregiverId = session!.user.id;
+
+  try {
+    const { blindUserId } = removePatientSchema.parse(input);
+
+    await prisma.careRelationship.updateMany({
+      where: { caregiverId, blindUserId, isActive: true },
+      data: { isActive: false },
+    });
+
+    revalidatePath("/caregiver/my-users");
+    redirect("/caregiver/my-users");
+  } catch (e) {
+    console.error("REMOVE_PATIENT_ERROR", e);
+    redirect("/caregiver/my-users?error=remove-patient");
+  }
+}
+
 export async function registerDeviceForPatientAction(input: unknown) {
   const session = await getServerSession(authOptions);
   requireRole(session, ["CAREGIVER"]);
