@@ -19,41 +19,35 @@ export async function GET() {
   const blindUserIds = relationships.map((r) => r.blindUserId);
   if (blindUserIds.length === 0) return NextResponse.json({ points: [] });
 
-  // For each blind user, take their latest alert that includes GPS
-  const alerts = await prisma.alertLog.findMany({
-    where: {
-      userId: { in: blindUserIds },
-      latitude: { not: null },
-      longitude: { not: null },
-    },
-    orderBy: { triggeredAt: "desc" },
-    take: 200,
+  const nameByUserId = new Map(relationships.map((r) => [r.blindUserId, r.blindUser.name]));
+
+  // Latest phone ping with GPS for each blind user
+  const pings = await prisma.locationPing.findMany({
+    where: { userId: { in: blindUserIds } },
+    orderBy: { sentAt: "desc" },
+    take: 300,
     select: {
       userId: true,
-      severity: true,
-      distanceCm: true,
-      triggeredAt: true,
+      sentAt: true,
       latitude: true,
       longitude: true,
-      device: { select: { serialNumber: true } },
     },
   });
 
-  const nameByUserId = new Map(relationships.map((r) => [r.blindUserId, r.blindUser.name]));
-  const firstByUserId = new Map<string, typeof alerts[number]>();
-  for (const a of alerts) {
-    if (!firstByUserId.has(a.userId)) firstByUserId.set(a.userId, a);
+  const firstPingByUserId = new Map<string, typeof pings[number]>();
+  for (const p of pings) {
+    if (!firstPingByUserId.has(p.userId)) firstPingByUserId.set(p.userId, p);
   }
 
-  const points = Array.from(firstByUserId.entries()).map(([blindUserId, a]) => ({
+  const points = Array.from(firstPingByUserId.entries()).map(([blindUserId, p]) => ({
     blindUserId,
     blindUserName: nameByUserId.get(blindUserId) ?? "Unknown",
-    deviceSerialNumber: a.device.serialNumber,
-    severity: a.severity,
-    distanceCm: a.distanceCm,
-    triggeredAt: a.triggeredAt.toISOString(),
-    latitude: a.latitude!,
-    longitude: a.longitude!,
+    deviceSerialNumber: "PHONE",
+    severity: "MEDIUM" as const,
+    distanceCm: 0,
+    triggeredAt: p.sentAt.toISOString(),
+    latitude: p.latitude,
+    longitude: p.longitude,
   }));
 
   return NextResponse.json({ points });

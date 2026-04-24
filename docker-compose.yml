@@ -67,6 +67,7 @@ services:
       MQTT_URL: mqtt://mqtt-broker:1883
       MQTT_TOPIC_DISTANCE: senzor/distanta
       MQTT_TOPIC_ACCEL: senzor/acceleratie
+      MQTT_TOPIC_PHONE_LOCATION: phone/location
       # IMPORTANT: must match a registered Device.serialNumber in the app
       DEVICE_SERIAL: ESP32_Senzori
       APP_BASE_URL: http://web:3000

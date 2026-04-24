@@ -45,6 +45,7 @@ model User {
 
   acknowledgedAlerts AlertLog[] @relation("AlertAcknowledgedBy")
   notifications      CaregiverNotification[] @relation("CaregiverNotifications")
+  locationPings      LocationPing[]
 
   @@index([role])
   @@index([isActive])
@@ -128,6 +129,21 @@ model CaregiverNotification {
 
   @@index([caregiverId])
   @@index([readAt])
+  @@index([sentAt])
+}
+
+model LocationPing {
+  id        String   @id @default(cuid())
+  userId    String
+  sentAt    DateTime @default(now())
+  latitude  Float
+  longitude Float
+  accuracyM Float?
+  speedMps  Float?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sentAt])
   @@index([sentAt])
 }
 
