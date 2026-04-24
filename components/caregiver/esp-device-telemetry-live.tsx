@@ -59,7 +59,7 @@ export function EspDeviceTelemetryLive({ serialNumber, label, initial }: Props) 
           </dd>
         </div>
         <div>
-          <dt className="text-slate-500">Last accel X</dt>
+          <dt className="text-slate-500">Last accel X (phone)</dt>
           <dd className="font-mono text-slate-200">{data.lastAccelX != null ? String(data.lastAccelX) : "—"}</dd>
         </div>
         <div>

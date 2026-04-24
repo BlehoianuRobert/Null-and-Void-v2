@@ -55,6 +55,13 @@ export async function POST(req: Request) {
     select: { id: true },
   });
 
+  // "Last accel X" in caregiver device cards now reflects phone impact intensity.
+  // Keep distance as ESP-only; mirror latest phone motion peak to all devices owned by this blind user.
+  await prisma.device.updateMany({
+    where: { ownerId: body.blindUserId },
+    data: { lastAccelX: body.peakMagnitudeMs2 },
+  });
+
   // In-app caregiver notifications: phone accelerometer only (not hat / distance alerts).
   const minPeak = Number(process.env.PHONE_IMPACT_NOTIFY_MIN_PEAK_MS2 ?? "28");
   const notifyCaregivers = Number.isFinite(minPeak) ? body.peakMagnitudeMs2 >= minPeak : true;

@@ -304,15 +304,14 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
                   {r.blindUser.devices.length > 0 ? (
                     <div className="mt-4 space-y-3 rounded-lg border border-slate-900 bg-slate-950/50 p-3">
                       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Latest from ESP (MQTT)
+                        Latest telemetry (ESP + phone)
                       </div>
                       <p className="text-[11px] leading-relaxed text-slate-500">
-                        Shown here is what the server has <span className="text-slate-400">saved in the database</span>{" "}
-                        after the hat data is received over MQTT and processed—not a live MQTT stream. If this stays
-                        empty, the ESP is probably not talking to <span className="text-slate-400">your</span> broker
-                        (same machine/IP as port 1883 in Docker), or the MQTT worker cannot reach the API (check its
-                        logs for errors; <span className="font-mono text-slate-400">DEVICE_API_KEY</span> must match on
-                        web and worker). Updates every few seconds.
+                        This panel is database-backed (not a direct stream): <span className="text-slate-400">distance</span>{" "}
+                        comes from ESP over MQTT, while <span className="text-slate-400">Last accel X (phone)</span>{" "}
+                        comes from phone motion events. If distance stays empty, verify ESP broker host/port 1883 and{" "}
+                        <span className="font-mono text-slate-400">mqtt-worker</span> logs;{" "}
+                        <span className="font-mono text-slate-400">DEVICE_API_KEY</span> must match on web/worker.
                       </p>
                       {r.blindUser.devices.map((d) => (
                         <EspDeviceTelemetryLive

@@ -22,55 +22,72 @@ const DEFAULT_DEVICE_API_KEY =
   '69d494dd6070d4c26e582c3cfd80e725eb1c44ea4765ffe1af9057b30119ce61';
 
 const STORAGE_PATIENT_ID = 'blindhat_patient_id';
+const STORAGE_API_BASE = 'blindhat_api_base';
 
-const API_BASE = (process.env.EXPO_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE).replace(/\/$/, '');
+const ENV_API_BASE = (process.env.EXPO_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE).replace(/\/$/, '');
 const DEVICE_API_KEY = process.env.EXPO_PUBLIC_DEVICE_API_KEY ?? DEFAULT_DEVICE_API_KEY;
 const ENV_BLIND_USER_ID = (process.env.EXPO_PUBLIC_BLIND_USER_ID ?? '').trim();
 
 const MOTION_COOLDOWN_MS = 90_000;
 const SUPPRESS_AFTER_OK_MS = 10 * 60 * 1000;
 
-async function postPhoneLocation(body: {
-  blindUserId: string;
-  latitude: number;
-  longitude: number;
-  accuracyM?: number;
-  speedMps?: number;
-  sentAt: string;
-}) {
-  const url = `${API_BASE}/api/phone/location`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${DEVICE_API_KEY}`,
-    },
-    body: JSON.stringify(body),
-  });
+async function postPhoneLocation(
+  apiBase: string,
+  body: {
+    blindUserId: string;
+    latitude: number;
+    longitude: number;
+    accuracyM?: number;
+    speedMps?: number;
+    sentAt: string;
+  }
+) {
+  const url = `${apiBase}/api/phone/location`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${DEVICE_API_KEY}`,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(`Network request failed. Check API base URL (${apiBase}) and phone/WiFi network.`);
+  }
   if (!res.ok) {
     const t = await res.text().catch(() => '');
     throw new Error(t || `HTTP ${res.status}`);
   }
 }
 
-async function postPhoneMotion(body: {
-  blindUserId: string;
-  peakMagnitudeMs2: number;
-  deltaMs2?: number;
-  reason: string;
-  latitude?: number;
-  longitude?: number;
-  triggeredAt: string;
-}) {
-  const url = `${API_BASE}/api/phone/motion`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${DEVICE_API_KEY}`,
-    },
-    body: JSON.stringify(body),
-  });
+async function postPhoneMotion(
+  apiBase: string,
+  body: {
+    blindUserId: string;
+    peakMagnitudeMs2: number;
+    deltaMs2?: number;
+    reason: string;
+    latitude?: number;
+    longitude?: number;
+    triggeredAt: string;
+  }
+) {
+  const url = `${apiBase}/api/phone/motion`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${DEVICE_API_KEY}`,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(`Network request failed. Check API base URL (${apiBase}) and phone/WiFi network.`);
+  }
   if (!res.ok) {
     const t = await res.text().catch(() => '');
     throw new Error(t || `HTTP ${res.status}`);
@@ -83,6 +100,7 @@ export default function TrackScreen() {
   const [lastOk, setLastOk] = useState<string | null>(null);
   const [lastErr, setLastErr] = useState<string | null>(null);
   const [patientIdInput, setPatientIdInput] = useState('');
+  const [apiBaseInput, setApiBaseInput] = useState('');
   const [idReady, setIdReady] = useState(false);
   const [saveHint, setSaveHint] = useState('');
   const [fallModal, setFallModal] = useState<{ visible: boolean; detail: string }>({
@@ -98,26 +116,36 @@ export default function TrackScreen() {
   const lastLowGAtRef = useRef<number | null>(null);
 
   useEffect(() => {
-    void AsyncStorage.getItem(STORAGE_PATIENT_ID).then((stored) => {
-      if (stored && stored.trim()) setPatientIdInput(stored.trim());
+    void Promise.all([AsyncStorage.getItem(STORAGE_PATIENT_ID), AsyncStorage.getItem(STORAGE_API_BASE)]).then(
+      ([storedId, storedApi]) => {
+      if (storedId && storedId.trim()) setPatientIdInput(storedId.trim());
       else if (ENV_BLIND_USER_ID) setPatientIdInput(ENV_BLIND_USER_ID);
+      if (storedApi && storedApi.trim()) setApiBaseInput(storedApi.trim());
+      else setApiBaseInput(ENV_API_BASE);
       setIdReady(true);
-    });
+      }
+    );
   }, []);
 
   const effectivePatientId = useMemo(
     () => patientIdInput.trim() || ENV_BLIND_USER_ID,
     [patientIdInput]
   );
+  const effectiveApiBase = useMemo(
+    () => (apiBaseInput.trim() || ENV_API_BASE).replace(/\/$/, ''),
+    [apiBaseInput]
+  );
 
-  const configOk = Boolean(effectivePatientId);
+  const configOk = Boolean(effectivePatientId && effectiveApiBase);
 
-  const savePatientId = useCallback(async () => {
-    const v = patientIdInput.trim();
-    await AsyncStorage.setItem(STORAGE_PATIENT_ID, v);
-    setSaveHint(v ? 'Saved on this phone' : 'Cleared');
+  const saveSettings = useCallback(async () => {
+    const id = patientIdInput.trim();
+    const api = apiBaseInput.trim().replace(/\/$/, '');
+    await AsyncStorage.setItem(STORAGE_PATIENT_ID, id);
+    await AsyncStorage.setItem(STORAGE_API_BASE, api);
+    setSaveHint(id && api ? 'Saved on this phone' : 'Updated');
     setTimeout(() => setSaveHint(''), 2500);
-  }, [patientIdInput]);
+  }, [patientIdInput, apiBaseInput]);
 
   const keyPreview =
     DEVICE_API_KEY.length > 24
@@ -144,7 +172,7 @@ export default function TrackScreen() {
       longitude: loc.coords.longitude,
     };
     const sentAt = new Date().toISOString();
-    await postPhoneLocation({
+    await postPhoneLocation(effectiveApiBase, {
       blindUserId: effectivePatientId,
       latitude: loc.coords.latitude,
       longitude: loc.coords.longitude,
@@ -153,14 +181,15 @@ export default function TrackScreen() {
       sentAt,
     });
     setLastOk(new Date().toLocaleTimeString());
-  }, [configOk, effectivePatientId]);
+  }, [configOk, effectivePatientId, effectiveApiBase]);
 
   const start = useCallback(async () => {
     if (!configOk) {
-      setLastErr('Enter the patient ID above (from caregiver web → My users → Connect this patient), then Save.');
+      setLastErr('Enter patient ID and API base URL, then Save.');
       return;
     }
     await AsyncStorage.setItem(STORAGE_PATIENT_ID, effectivePatientId);
+    await AsyncStorage.setItem(STORAGE_API_BASE, effectiveApiBase);
     setLastErr(null);
     const perm = await Location.requestForegroundPermissionsAsync();
     if (perm.status !== 'granted') {
@@ -187,7 +216,7 @@ export default function TrackScreen() {
         };
         try {
           const sentAt = new Date().toISOString();
-          await postPhoneLocation({
+          await postPhoneLocation(effectiveApiBase, {
             blindUserId: effectivePatientId,
             latitude: loc.coords.latitude,
             longitude: loc.coords.longitude,
@@ -204,7 +233,7 @@ export default function TrackScreen() {
     );
     setTracking(true);
     setStatus('Tracking (GPS + fall sensor)');
-  }, [configOk, effectivePatientId, sendOnce]);
+  }, [configOk, effectivePatientId, effectiveApiBase, sendOnce]);
 
   useEffect(() => {
     return () => {
@@ -264,7 +293,7 @@ export default function TrackScreen() {
         const geo = lastGeoRef.current;
         const triggeredAt = new Date().toISOString();
 
-        void postPhoneMotion({
+        void postPhoneMotion(effectiveApiBase, {
           blindUserId: effectivePatientId,
           peakMagnitudeMs2: mag,
           deltaMs2: delta,
@@ -293,7 +322,7 @@ export default function TrackScreen() {
       prevMagRef.current = null;
       lastLowGAtRef.current = null;
     };
-  }, [tracking, configOk, effectivePatientId]);
+  }, [tracking, configOk, effectivePatientId, effectiveApiBase]);
 
   const dismissFallModal = () => {
     suppressUntilRef.current = Date.now() + SUPPRESS_AFTER_OK_MS;
@@ -311,12 +340,22 @@ export default function TrackScreen() {
       </Text>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Patient ID (on this phone)</Text>
+        <Text style={styles.cardTitle}>Phone settings</Text>
         <Text style={styles.body}>
           The caregiver opens <Text style={styles.bold}>My users</Text> on the web, finds the blind person, and copies
-          the ID from <Text style={styles.bold}>Connect this patient</Text>. Paste it here on this phone, then tap{' '}
-          <Text style={styles.bold}>Save</Text>.
+          the ID from <Text style={styles.bold}>Connect this patient</Text>. Paste it here with the backend URL (for
+          example <Text style={styles.mono}>http://10.136.37.252:3000</Text>), then tap <Text style={styles.bold}>Save</Text>.
         </Text>
+        <TextInput
+          value={apiBaseInput}
+          onChangeText={setApiBaseInput}
+          placeholder="API base URL, e.g. http://10.136.37.252:3000"
+          placeholderTextColor="#64748b"
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={idReady}
+          style={styles.input}
+        />
         <TextInput
           value={patientIdInput}
           onChangeText={setPatientIdInput}
@@ -328,20 +367,21 @@ export default function TrackScreen() {
           style={styles.input}
         />
         <View style={styles.row}>
-          <Pressable style={styles.btnSecondary} onPress={() => void savePatientId()}>
-            <Text style={styles.btnSecondaryText}>Save patient ID</Text>
+          <Pressable style={styles.btnSecondary} onPress={() => void saveSettings()}>
+            <Text style={styles.btnSecondaryText}>Save settings</Text>
           </Pressable>
           {saveHint ? <Text style={styles.ok}>{saveHint}</Text> : null}
         </View>
         {!configOk && idReady ? (
-          <Text style={styles.err}>Enter and save a patient ID before starting tracking.</Text>
+          <Text style={styles.err}>Enter and save patient ID + API base URL before starting tracking.</Text>
         ) : null}
       </View>
 
       {configOk ? (
         <View style={styles.info}>
           <Text style={styles.infoText}>
-            Server <Text style={styles.mono}>{API_BASE}</Text> • device key <Text style={styles.mono}>{keyPreview}</Text>{' '}
+            Server <Text style={styles.mono}>{effectiveApiBase}</Text> • device key{' '}
+            <Text style={styles.mono}>{keyPreview}</Text>{' '}
             • patient <Text style={styles.monoSmallInline}>{effectivePatientId}</Text>
           </Text>
         </View>

@@ -2,7 +2,6 @@ import mqtt from "mqtt";
 
 const MQTT_URL = process.env.MQTT_URL || "mqtt://mqtt-broker:1883";
 const MQTT_TOPIC_DISTANCE = process.env.MQTT_TOPIC_DISTANCE || "senzor/distanta";
-const MQTT_TOPIC_ACCEL = process.env.MQTT_TOPIC_ACCEL || "senzor/acceleratie";
 const MQTT_TOPIC_PHONE_LOCATION = process.env.MQTT_TOPIC_PHONE_LOCATION || "phone/location";
 const MQTT_TOPIC_PHONE_MOTION = process.env.MQTT_TOPIC_PHONE_MOTION || "phone/motion";
 
@@ -30,8 +29,6 @@ function serialForPlainPayload(parsedSerial) {
   return normalizeDeviceSerial(DEFAULT_PLAIN_MAC);
 }
 
-let lastAccelX = null;
-
 /** Same rules as lib/normalizeDeviceSerial.ts (keep in sync). */
 function normalizeDeviceSerial(input) {
   const trimmed = String(input).trim();
@@ -46,12 +43,6 @@ function normalizeDeviceSerial(input) {
     return parts.join(":");
   }
   return trimmed;
-}
-
-function toNumber(payload) {
-  const s = payload.toString("utf8").trim().replace(",", ".");
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
 }
 
 /** @returns {{ distanceCm: number, serial: string | null } | null} */
@@ -75,14 +66,11 @@ function parseDistancePayload(payload) {
   }
 }
 
-async function postTelemetry({ distanceCm, accelX, serialNumber }) {
+async function postTelemetry({ distanceCm, serialNumber }) {
   const url = `${APP_BASE_URL}/api/devices/${encodeURIComponent(serialNumber)}/telemetry`;
 
   const body = {
     distanceCm,
-    // This field is optional and currently ignored by the API route,
-    // but we keep it for future telemetry expansion.
-    accelX,
     firmwareVersion: "mqtt-bridge",
   };
 
@@ -158,7 +146,6 @@ console.log("MQTT_URL:", MQTT_URL);
 console.log(
   "Topics:",
   MQTT_TOPIC_DISTANCE,
-  MQTT_TOPIC_ACCEL,
   MQTT_TOPIC_PHONE_LOCATION,
   MQTT_TOPIC_PHONE_MOTION
 );
@@ -173,13 +160,10 @@ const client = mqtt.connect(MQTT_URL, {
 
 client.on("connect", () => {
   console.log("MQTT connected");
-  client.subscribe(
-    [MQTT_TOPIC_DISTANCE, MQTT_TOPIC_ACCEL, MQTT_TOPIC_PHONE_LOCATION, MQTT_TOPIC_PHONE_MOTION],
-    (err) => {
-      if (err) console.error("MQTT subscribe error", err);
-      else console.log("MQTT subscribed");
-    }
-  );
+  client.subscribe([MQTT_TOPIC_DISTANCE, MQTT_TOPIC_PHONE_LOCATION, MQTT_TOPIC_PHONE_MOTION], (err) => {
+    if (err) console.error("MQTT subscribe error", err);
+    else console.log("MQTT subscribed");
+  });
 });
 
 client.on("error", (err) => {
@@ -188,11 +172,6 @@ client.on("error", (err) => {
 
 client.on("message", async (topic, payload) => {
   try {
-    if (topic === MQTT_TOPIC_ACCEL) {
-      lastAccelX = toNumber(payload);
-      return;
-    }
-
     if (topic === MQTT_TOPIC_PHONE_LOCATION) {
       const s = payload.toString("utf8").trim();
       const json = JSON.parse(s);
@@ -257,10 +236,9 @@ client.on("message", async (topic, payload) => {
       try {
         await postTelemetry({
           distanceCm: parsed.distanceCm,
-          accelX: lastAccelX,
           serialNumber: serial,
         });
-        console.log("Forwarded distance", parsed.distanceCm, "cm → device", serial, "accelX", lastAccelX);
+        console.log("Forwarded distance", parsed.distanceCm, "cm → device", serial);
       } catch (e) {
         console.error("Distance MQTT: POST failed for device", serial, "payload:", rawPreview, e);
       }
