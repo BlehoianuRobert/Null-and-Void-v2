@@ -1,7 +1,6 @@
 services:
   mqtt-broker:
     image: eclipse-mosquitto:2
-    container_name: mqtt-broker
     restart: unless-stopped
     ports:
       - "1883:1883"
@@ -16,8 +15,6 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: blindhat
-    ports:
-      - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
 
