@@ -1,3 +1,8 @@
+# Portainer: add variables in the stack "Environment variables" box (they fill ${VAR} here).
+#   DEVICE_SERIAL=98:A3:16:7E:57:C0   ← required if ESP sends a plain number on senzor/distanta
+#   DEVICE_API_KEY=...              ← same secret as web (optional if you keep change-me)
+# Or on any host: copy docker-compose.override.example.yml → docker-compose.override.yml and edit.
+
 services:
   mqtt-broker:
     image: eclipse-mosquitto:2
@@ -41,7 +46,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/blindhat?schema=public
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: "change-me"
-      DEVICE_API_KEY: "change-me"
+      DEVICE_API_KEY: ${DEVICE_API_KEY:-change-me}
       PHONE_APP_BASE_URL: "http://10.136.37.252:3000"
       PUSHER_APP_ID: ""
       PUSHER_KEY: ""
@@ -67,9 +72,9 @@ services:
       MQTT_TOPIC_PHONE_MOTION: phone/motion
       # Optional fallback for plain numeric distance MQTT payloads. Prefer JSON on the wire:
       # {"distanceCm":40,"deviceMac":"98:A3:16:7E:57:C0"} — then each ESP can identify itself without changing this.
-      DEVICE_SERIAL: ${DEVICE_SERIAL}
+      DEVICE_SERIAL: ${DEVICE_SERIAL:-}
       APP_BASE_URL: http://web:3000
-      DEVICE_API_KEY: "change-me"
+      DEVICE_API_KEY: ${DEVICE_API_KEY:-change-me}
 
 volumes:
   db_data:
