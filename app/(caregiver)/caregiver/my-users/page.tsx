@@ -139,6 +139,12 @@ export default async function CaregiverMyUsersPage() {
                     <div className="text-xs text-slate-400">
                       Phone: {r.blindUser.phone ?? "—"} • Devices: {r.blindUser.devices.length}
                     </div>
+                    <div className="mt-2 text-xs text-slate-400">
+                      <span className="font-semibold text-slate-300">Device MAC(s):</span>{" "}
+                      {r.blindUser.devices.length > 0
+                        ? r.blindUser.devices.map((d) => d.serialNumber).join(", ")
+                        : "— (not registered yet)"}
+                    </div>
                   </div>
                   <form
                     action={async () => {
