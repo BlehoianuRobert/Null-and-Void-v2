@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMotionUsageDescription": "Accelerometer is used to detect possible falls while tracking is on."
+      }
     },
     "android": {
       "usesCleartextTraffic": true,

@@ -50,6 +50,27 @@ export default async function CaregiverDashboardPage() {
       })
     : [];
 
+  const motionAlerts =
+    blindUserIds.length > 0
+      ? await prisma.safetyMotionAlert.findMany({
+          where: { userId: { in: blindUserIds } },
+          orderBy: { triggeredAt: "desc" },
+          take: 25,
+          select: {
+            id: true,
+            triggeredAt: true,
+            peakMagnitudeMs2: true,
+            deltaMs2: true,
+            reason: true,
+            latitude: true,
+            longitude: true,
+            userId: true,
+          },
+        })
+      : [];
+
+  const blindNameById = new Map(relationships.map((r) => [r.blindUserId, r.blindUser.name]));
+
   const seen = new Set<string>();
   const lastPingAt = new Map<string, Date>();
   for (const p of lastPingByUser) {
@@ -169,6 +190,52 @@ export default async function CaregiverDashboardPage() {
                 <tr>
                   <td className="py-6 text-slate-400" colSpan={4}>
                     No patients assigned yet.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-900 bg-slate-950/60 p-5">
+        <h2 className="text-sm font-semibold text-slate-200">Phone motion — possible accident</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          From the Android app while tracking is on (accelerometer heuristics, not medical-grade). Pi can also
+          publish JSON to MQTT <span className="font-mono">phone/motion</span>.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="py-2 pr-3">When</th>
+                <th className="py-2 pr-3">Patient</th>
+                <th className="py-2 pr-3">Reason</th>
+                <th className="py-2 pr-3">Peak m/s²</th>
+                <th className="py-2 pr-3">GPS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-900">
+              {motionAlerts.map((a) => (
+                <tr key={a.id} className="text-slate-200">
+                  <td className="py-2 pr-3 text-slate-400">{a.triggeredAt.toLocaleString()}</td>
+                  <td className="py-2 pr-3">{blindNameById.get(a.userId) ?? a.userId}</td>
+                  <td className="py-2 pr-3 font-mono text-xs text-slate-400">{a.reason}</td>
+                  <td className="py-2 pr-3 font-mono text-xs">
+                    {a.peakMagnitudeMs2.toFixed(1)}
+                    {a.deltaMs2 != null ? ` (Δ ${a.deltaMs2.toFixed(1)})` : ""}
+                  </td>
+                  <td className="py-2 pr-3 text-xs text-slate-400">
+                    {a.latitude != null && a.longitude != null
+                      ? `${a.latitude.toFixed(4)}, ${a.longitude.toFixed(4)}`
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+              {motionAlerts.length === 0 ? (
+                <tr>
+                  <td className="py-6 text-slate-400" colSpan={5}>
+                    No motion alerts yet.
                   </td>
                 </tr>
               ) : null}

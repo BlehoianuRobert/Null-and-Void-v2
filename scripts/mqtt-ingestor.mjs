@@ -4,6 +4,7 @@ const MQTT_URL = process.env.MQTT_URL || "mqtt://mqtt-broker:1883";
 const MQTT_TOPIC_DISTANCE = process.env.MQTT_TOPIC_DISTANCE || "senzor/distanta";
 const MQTT_TOPIC_ACCEL = process.env.MQTT_TOPIC_ACCEL || "senzor/acceleratie";
 const MQTT_TOPIC_PHONE_LOCATION = process.env.MQTT_TOPIC_PHONE_LOCATION || "phone/location";
+const MQTT_TOPIC_PHONE_MOTION = process.env.MQTT_TOPIC_PHONE_MOTION || "phone/motion";
 
 // Because your ESP32 publishes without a device id in the topic/payload,
 // we map the incoming MQTT messages to ONE registered device serial number
@@ -60,6 +61,40 @@ async function postTelemetry({ distanceCm, accelX }) {
   }
 }
 
+async function postPhoneMotion({
+  blindUserId,
+  peakMagnitudeMs2,
+  deltaMs2,
+  reason,
+  latitude,
+  longitude,
+  triggeredAt,
+}) {
+  const url = `${APP_BASE_URL}/api/phone/motion`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${DEVICE_API_KEY}`,
+    },
+    body: JSON.stringify({
+      blindUserId,
+      peakMagnitudeMs2,
+      deltaMs2,
+      reason,
+      latitude,
+      longitude,
+      triggeredAt,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Phone motion POST failed ${res.status}: ${text}`);
+  }
+}
+
 async function postPhoneLocation({ blindUserId, latitude, longitude, accuracyM, speedMps, sentAt }) {
   const url = `${APP_BASE_URL}/api/phone/location`;
 
@@ -80,7 +115,13 @@ async function postPhoneLocation({ blindUserId, latitude, longitude, accuracyM, 
 
 console.log("MQTT ingestor starting");
 console.log("MQTT_URL:", MQTT_URL);
-console.log("Topics:", MQTT_TOPIC_DISTANCE, MQTT_TOPIC_ACCEL, MQTT_TOPIC_PHONE_LOCATION);
+console.log(
+  "Topics:",
+  MQTT_TOPIC_DISTANCE,
+  MQTT_TOPIC_ACCEL,
+  MQTT_TOPIC_PHONE_LOCATION,
+  MQTT_TOPIC_PHONE_MOTION
+);
 console.log("DEVICE_SERIAL:", DEVICE_SERIAL);
 console.log("APP_BASE_URL:", APP_BASE_URL);
 
@@ -91,10 +132,13 @@ const client = mqtt.connect(MQTT_URL, {
 
 client.on("connect", () => {
   console.log("MQTT connected");
-  client.subscribe([MQTT_TOPIC_DISTANCE, MQTT_TOPIC_ACCEL, MQTT_TOPIC_PHONE_LOCATION], (err) => {
-    if (err) console.error("MQTT subscribe error", err);
-    else console.log("MQTT subscribed");
-  });
+  client.subscribe(
+    [MQTT_TOPIC_DISTANCE, MQTT_TOPIC_ACCEL, MQTT_TOPIC_PHONE_LOCATION, MQTT_TOPIC_PHONE_MOTION],
+    (err) => {
+      if (err) console.error("MQTT subscribe error", err);
+      else console.log("MQTT subscribed");
+    }
+  );
 });
 
 client.on("error", (err) => {
@@ -124,6 +168,34 @@ client.on("message", async (topic, payload) => {
 
       await postPhoneLocation({ blindUserId, latitude, longitude, accuracyM, speedMps, sentAt });
       console.log("Forwarded phone location", blindUserId, latitude, longitude);
+      return;
+    }
+
+    if (topic === MQTT_TOPIC_PHONE_MOTION) {
+      const s = payload.toString("utf8").trim();
+      const json = JSON.parse(s);
+      if (!json || typeof json !== "object") return;
+
+      const blindUserId = String(json.blindUserId ?? "");
+      const peakMagnitudeMs2 = Number(json.peakMagnitudeMs2);
+      if (!blindUserId || !Number.isFinite(peakMagnitudeMs2)) return;
+
+      const deltaMs2 = Number.isFinite(Number(json.deltaMs2)) ? Number(json.deltaMs2) : undefined;
+      const reason = typeof json.reason === "string" ? json.reason : "MQTT";
+      const latitude = Number.isFinite(Number(json.latitude)) ? Number(json.latitude) : undefined;
+      const longitude = Number.isFinite(Number(json.longitude)) ? Number(json.longitude) : undefined;
+      const triggeredAt = typeof json.triggeredAt === "string" ? json.triggeredAt : undefined;
+
+      await postPhoneMotion({
+        blindUserId,
+        peakMagnitudeMs2,
+        deltaMs2,
+        reason,
+        latitude,
+        longitude,
+        triggeredAt,
+      });
+      console.log("Forwarded phone motion", blindUserId, peakMagnitudeMs2, reason);
       return;
     }
 

@@ -46,6 +46,7 @@ model User {
   acknowledgedAlerts AlertLog[] @relation("AlertAcknowledgedBy")
   notifications      CaregiverNotification[] @relation("CaregiverNotifications")
   locationPings      LocationPing[]
+  safetyMotionAlerts SafetyMotionAlert[]
 
   @@index([role])
   @@index([isActive])
@@ -147,5 +148,22 @@ model LocationPing {
 
   @@index([userId, sentAt])
   @@index([sentAt])
+}
+
+/// Heuristic “possible accident” from phone accelerometer (not medically validated).
+model SafetyMotionAlert {
+  id               String   @id @default(cuid())
+  userId           String
+  triggeredAt      DateTime @default(now())
+  peakMagnitudeMs2 Float
+  deltaMs2         Float?
+  reason           String
+  latitude         Float?
+  longitude        Float?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, triggeredAt])
+  @@index([triggeredAt])
 }
 
