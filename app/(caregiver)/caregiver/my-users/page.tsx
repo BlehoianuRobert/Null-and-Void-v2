@@ -307,17 +307,12 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
                         Latest from ESP (MQTT)
                       </div>
                       <p className="text-[11px] leading-relaxed text-slate-500">
-                        This block reads the <span className="text-slate-400">database</span> (updated only after{" "}
-                        <span className="font-mono text-slate-400">mqtt-worker</span> successfully POSTs to{" "}
-                        <span className="font-mono text-slate-400">/api/devices/&lt;MAC&gt;/telemetry</span>). If it
-                        stays empty: confirm the ESP MQTT broker IP/port is the <span className="text-slate-400">same</span> host
-                        where Docker publishes <span className="font-mono text-slate-400">1883</span>, check{" "}
-                        <span className="font-mono text-slate-400">mqtt-worker</span> logs for{" "}
-                        <span className="text-slate-400">Forwarded distance</span> vs{" "}
-                        <span className="text-red-300/90">401/404</span>, and that{" "}
-                        <span className="font-mono text-slate-400">DEVICE_API_KEY</span> matches on{" "}
-                        <span className="font-mono text-slate-400">web</span> and worker. Refreshes every few seconds
-                        below.
+                        Shown here is what the server has <span className="text-slate-400">saved in the database</span>{" "}
+                        after the hat data is received over MQTT and processed—not a live MQTT stream. If this stays
+                        empty, the ESP is probably not talking to <span className="text-slate-400">your</span> broker
+                        (same machine/IP as port 1883 in Docker), or the MQTT worker cannot reach the API (check its
+                        logs for errors; <span className="font-mono text-slate-400">DEVICE_API_KEY</span> must match on
+                        web and worker). Updates every few seconds.
                       </p>
                       {r.blindUser.devices.map((d) => (
                         <EspDeviceTelemetryLive
