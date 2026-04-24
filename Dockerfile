@@ -15,6 +15,13 @@ RUN npm ci
 COPY prisma ./prisma
 RUN npx prisma generate
 
+FROM base AS worker
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json ./
+COPY scripts ./scripts
+CMD ["node", "scripts/mqtt-ingestor.mjs"]
+
 FROM base AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
