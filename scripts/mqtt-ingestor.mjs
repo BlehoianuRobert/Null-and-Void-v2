@@ -28,6 +28,22 @@ if (!DEVICE_SERIAL) {
 
 let lastAccelX = null;
 
+/** Same rules as lib/normalizeDeviceSerial.ts (keep in sync). */
+function normalizeDeviceSerial(input) {
+  const trimmed = String(input).trim();
+  if (!trimmed) return trimmed;
+  const compact = trimmed.replace(/[:-]/g, "").toUpperCase();
+  if (/^[0-9A-F]{12}$/.test(compact)) {
+    return compact.match(/.{2}/g).join(":");
+  }
+  const withColons = trimmed.replace(/-/g, ":").trim();
+  const parts = withColons.split(":").map((p) => p.trim().toUpperCase());
+  if (parts.length === 6 && parts.every((p) => /^[0-9A-F]{2}$/.test(p))) {
+    return parts.join(":");
+  }
+  return trimmed;
+}
+
 function toNumber(payload) {
   const s = payload.toString("utf8").trim().replace(",", ".");
   const n = Number(s);
@@ -42,13 +58,12 @@ function parseDistancePayload(payload) {
   try {
     const j = JSON.parse(raw);
     if (!j || typeof j !== "object") return null;
-    const serial = String(j.deviceMac ?? j.mac ?? j.serial ?? j.serialNumber ?? "")
-      .trim()
-      .replace(/-/g, ":");
+    const rawMac = String(j.deviceMac ?? j.mac ?? j.serial ?? j.serialNumber ?? "").trim();
+    const serial = rawMac ? normalizeDeviceSerial(rawMac) : "";
     let d = j.distanceCm ?? j.distanta ?? j.distance ?? j.cm;
     if (typeof d === "string") d = Number(String(d).replace(",", "."));
     if (!Number.isFinite(d)) return null;
-    return { distanceCm: d, serial: serial || null };
+    return { distanceCm: d, serial: serial ? serial : null };
   } catch {
     const n = Number(raw.replace(",", "."));
     if (!Number.isFinite(n)) return null;
@@ -224,7 +239,7 @@ client.on("message", async (topic, payload) => {
       const parsed = parseDistancePayload(payload);
       if (!parsed) return;
 
-      const serial = parsed.serial || DEVICE_SERIAL;
+      const serial = normalizeDeviceSerial(parsed.serial || DEVICE_SERIAL);
       if (!serial) {
         console.error(
           "Distance MQTT: could not determine device. Send JSON e.g. {\"distanceCm\":42,\"deviceMac\":\"98:A3:16:7E:57:C0\"} or set DEVICE_SERIAL in the worker env."

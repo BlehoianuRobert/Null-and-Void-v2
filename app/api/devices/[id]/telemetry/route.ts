@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeDeviceSerial } from "@/lib/normalizeDeviceSerial";
 
 function getBearerToken(req: Request) {
   const h = req.headers.get("authorization");
@@ -16,8 +17,11 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   const token = getBearerToken(req);
   if (token !== apiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const serialNumber = ctx.params.id;
-  if (!serialNumber) return NextResponse.json({ error: "Missing serial" }, { status: 400 });
+  const fromUrl = (ctx.params.id ?? "").trim();
+  if (!fromUrl) return NextResponse.json({ error: "Missing serial" }, { status: 400 });
+
+  const canon = normalizeDeviceSerial(fromUrl);
+  const serialVariants = [...new Set([fromUrl, canon, canon.replace(/:/g, "-")])].filter(Boolean);
 
   const body = (await req.json().catch(() => null)) as
     | {
@@ -34,10 +38,11 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const device = await prisma.device.findUnique({
-    where: { serialNumber },
+  const device = await prisma.device.findFirst({
+    where: { serialNumber: { in: serialVariants } },
     select: {
       id: true,
+      serialNumber: true,
       ownerId: true,
       thresholdCritical: true,
       thresholdNear: true,
@@ -54,7 +59,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     typeof body.accelX === "number" && Number.isFinite(body.accelX) ? body.accelX : undefined;
 
   await prisma.device.update({
-    where: { serialNumber },
+    where: { id: device.id },
     data: {
       isOnline: true,
       lastSeenAt: now,

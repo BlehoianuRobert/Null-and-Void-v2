@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { normalizeDeviceSerial } from "@/lib/normalizeDeviceSerial";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect";
@@ -48,7 +49,7 @@ export async function addPatientAction(input: unknown) {
       select: { id: true },
     });
 
-    const mac = (deviceMac || "").trim();
+    const mac = normalizeDeviceSerial(deviceMac || "");
     if (mac) {
       await prisma.device.upsert({
         where: { serialNumber: mac },
@@ -119,7 +120,10 @@ export async function registerDeviceForPatientAction(input: unknown) {
   const caregiverId = session!.user.id;
 
   try {
-    const { blindUserId, serialNumber, label } = registerDeviceSchema.parse(input);
+    const parsed = registerDeviceSchema.parse(input);
+    const blindUserId = parsed.blindUserId;
+    const serialNumber = normalizeDeviceSerial(parsed.serialNumber);
+    const label = parsed.label;
 
     // Ensure caregiver is assigned to this blind user
     const rel = await prisma.careRelationship.findFirst({

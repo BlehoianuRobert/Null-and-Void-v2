@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizeDeviceSerial } from "@/lib/normalizeDeviceSerial";
 
 /** Caregiver-only: latest stored telemetry fields for one device (by MAC / serial). */
 export async function GET(req: Request) {
@@ -11,11 +12,14 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const serial = searchParams.get("serial")?.trim();
-  if (!serial) return NextResponse.json({ error: "Missing serial" }, { status: 400 });
+  const fromQuery = searchParams.get("serial")?.trim() ?? "";
+  if (!fromQuery) return NextResponse.json({ error: "Missing serial" }, { status: 400 });
 
-  const device = await prisma.device.findUnique({
-    where: { serialNumber: serial },
+  const canon = normalizeDeviceSerial(fromQuery);
+  const serialVariants = [...new Set([fromQuery, canon, canon.replace(/:/g, "-")])].filter(Boolean);
+
+  const device = await prisma.device.findFirst({
+    where: { serialNumber: { in: serialVariants } },
     select: {
       id: true,
       ownerId: true,
