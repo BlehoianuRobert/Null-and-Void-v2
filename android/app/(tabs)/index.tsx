@@ -14,9 +14,13 @@ import {
   View,
 } from 'react-native';
 
-const API_BASE = (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
-const DEVICE_API_KEY = process.env.EXPO_PUBLIC_DEVICE_API_KEY ?? '';
-const BLIND_USER_ID = process.env.EXPO_PUBLIC_BLIND_USER_ID ?? '';
+/** Defaults match typical Docker deploy; override with EXPO_PUBLIC_* in android/.env or EAS secrets. */
+const DEFAULT_API_BASE = 'http://10.136.37.252:3000';
+const DEFAULT_DEVICE_API_KEY = 'change-me';
+
+const API_BASE = (process.env.EXPO_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE).replace(/\/$/, '');
+const DEVICE_API_KEY = process.env.EXPO_PUBLIC_DEVICE_API_KEY ?? DEFAULT_DEVICE_API_KEY;
+const BLIND_USER_ID = (process.env.EXPO_PUBLIC_BLIND_USER_ID ?? '').trim();
 
 const MOTION_COOLDOWN_MS = 90_000;
 const SUPPRESS_AFTER_OK_MS = 10 * 60 * 1000;
@@ -85,7 +89,7 @@ export default function TrackScreen() {
   const prevMagRef = useRef<number | null>(null);
   const lastLowGAtRef = useRef<number | null>(null);
 
-  const configOk = Boolean(API_BASE && DEVICE_API_KEY && BLIND_USER_ID);
+  const configOk = Boolean(BLIND_USER_ID);
 
   const stop = useCallback(async () => {
     subRef.current?.remove();
@@ -120,7 +124,7 @@ export default function TrackScreen() {
 
   const start = useCallback(async () => {
     if (!configOk) {
-      setLastErr('Set EXPO_PUBLIC_API_BASE_URL, EXPO_PUBLIC_DEVICE_API_KEY, EXPO_PUBLIC_BLIND_USER_ID');
+      setLastErr('Set the patient ID: add EXPO_PUBLIC_BLIND_USER_ID (from web → My users) in android/.env, then restart with npx expo start -c');
       return;
     }
     setLastErr(null);
@@ -274,15 +278,25 @@ export default function TrackScreen() {
 
       {!configOk ? (
         <View style={styles.warn}>
-          <Text style={styles.warnTitle}>Configure build env (EAS secrets or .env)</Text>
-          <Text style={styles.monoSmall}>EXPO_PUBLIC_API_BASE_URL</Text>
-          <Text style={styles.hint}>Example: https://your-server.com or http://192.168.43.1:3000</Text>
-          <Text style={styles.monoSmall}>EXPO_PUBLIC_DEVICE_API_KEY</Text>
-          <Text style={styles.hint}>Same value as DEVICE_API_KEY on the server / Pi bridge.</Text>
+          <Text style={styles.warnTitle}>Set the patient ID on this phone</Text>
+          <Text style={styles.body}>
+            API URL defaults to <Text style={styles.mono}>{DEFAULT_API_BASE}</Text> and device key to{' '}
+            <Text style={styles.mono}>{DEFAULT_DEVICE_API_KEY}</Text> (same as Docker compose). Override with{' '}
+            <Text style={styles.mono}>EXPO_PUBLIC_*</Text> in <Text style={styles.mono}>android/.env</Text> if needed.
+          </Text>
           <Text style={styles.monoSmall}>EXPO_PUBLIC_BLIND_USER_ID</Text>
-          <Text style={styles.hint}>The patient’s internal ID (shown under each user in My users).</Text>
+          <Text style={styles.hint}>
+            Required: copy from web app → caregiver → My users → “Connect this patient” for the blind user.
+          </Text>
         </View>
-      ) : null}
+      ) : (
+        <View style={styles.info}>
+          <Text style={styles.infoText}>
+            Using <Text style={styles.mono}>{API_BASE}</Text> • key <Text style={styles.mono}>{DEVICE_API_KEY}</Text> •
+            patient <Text style={styles.monoSmallInline}>{BLIND_USER_ID}</Text>
+          </Text>
+        </View>
+      )}
 
       <View style={styles.row}>
         {!tracking ? (
@@ -346,6 +360,24 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700', color: '#f8fafc' },
   body: { fontSize: 14, color: '#94a3b8', lineHeight: 20 },
   bold: { fontWeight: '700', color: '#e2e8f0' },
+  mono: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontSize: 13,
+    color: '#86efac',
+  },
+  monoSmallInline: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontSize: 11,
+    color: '#a5b4fc',
+  },
+  info: {
+    borderWidth: 1,
+    borderColor: '#14532d',
+    backgroundColor: '#052e16',
+    padding: 10,
+    borderRadius: 10,
+  },
+  infoText: { fontSize: 12, color: '#bbf7d0', lineHeight: 18 },
   monoSmall: {
     marginTop: 8,
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),

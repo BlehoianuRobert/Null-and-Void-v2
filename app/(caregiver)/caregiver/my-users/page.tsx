@@ -22,6 +22,9 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
     typeof searchParams?.error === "string" ? searchParams.error : undefined;
   const errorBanner = errorKey ? errorMessages[errorKey] ?? "Something went wrong. Try again." : null;
 
+  const phoneAppBaseUrl = (process.env.PHONE_APP_BASE_URL ?? "http://10.136.37.252:3000").replace(/\/$/, "");
+  const deviceApiKeyForPhone = (process.env.DEVICE_API_KEY ?? "").trim();
+
   const relationships = await prisma.careRelationship.findMany({
     where: { caregiverId, isActive: true },
     orderBy: { assignedAt: "desc" },
@@ -68,6 +71,50 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
         Distance and accelerometer values from MQTT appear under each device once the worker{" "}
         <span className="text-slate-300">DEVICE_SERIAL</span> matches that MAC.
       </p>
+
+      <div className="mt-6 rounded-xl border border-[#1D9E75]/40 bg-slate-950/80 p-5">
+        <h2 className="text-sm font-semibold text-[#1D9E75]">Android app — values for this server</h2>
+        <p className="mt-2 text-xs text-slate-500">
+          Set these on the patient’s phone (Track tab), or in <span className="font-mono">android/.env</span> / EAS
+          secrets as <span className="font-mono">EXPO_PUBLIC_*</span>. The patient ID is different for each blind user —
+          use the green “Connect this patient” box on their card below.
+        </p>
+        <dl className="mt-4 space-y-3 text-sm">
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              EXPO_PUBLIC_API_BASE_URL (no /api, no trailing slash)
+            </dt>
+            <dd className="mt-1 break-all font-mono text-slate-200">{phoneAppBaseUrl}</dd>
+            <p className="mt-1 text-xs text-slate-500">
+              Override on the server with env <span className="font-mono">PHONE_APP_BASE_URL</span> if this host is
+              wrong.
+            </p>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              EXPO_PUBLIC_DEVICE_API_KEY (must match server)
+            </dt>
+            <dd className="mt-1 break-all font-mono text-slate-200">
+              {deviceApiKeyForPhone ? deviceApiKeyForPhone : "— not set on server (set DEVICE_API_KEY in .env / Docker)"}
+            </dd>
+            <p className="mt-1 text-xs text-slate-500">
+              This is the same secret as <span className="font-mono">DEVICE_API_KEY</span> in your web container /{" "}
+              <span className="font-mono">.env</span> (and MQTT worker). Default in repo Docker is{" "}
+              <span className="font-mono">change-me</span> — change it in production.
+            </p>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">EXPO_PUBLIC_BLIND_USER_ID</dt>
+            <dd className="mt-1 text-slate-400">
+              Copy from each patient’s card — <span className="text-slate-200">one phone per patient ID</span>.
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-4 text-xs text-amber-200/90">
+          Anyone with caregiver login can see the device key here — use a strong random key in production and do not
+          share screenshots publicly.
+        </p>
+      </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl border border-slate-900 bg-slate-950/60 p-5">
@@ -179,9 +226,16 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
                         ? r.blindUser.devices.map((d) => d.serialNumber).join(", ")
                         : "— (not registered yet)"}
                     </div>
-                    <div className="mt-2 font-mono text-[11px] text-slate-500">
-                      Patient ID (phone app / MQTT):{" "}
-                      <span className="select-all text-slate-300">{r.blindUser.id}</span>
+                    <div className="mt-3 rounded-lg border border-[#1D9E75]/35 bg-slate-950/80 p-3">
+                      <div className="text-xs font-semibold text-[#1D9E75]">Connect this patient (Android)</div>
+                      <div className="mt-2 text-sm text-slate-200">
+                        Name: <span className="font-semibold">{r.blindUser.name}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        Put this ID in the phone as <span className="font-mono text-slate-300">EXPO_PUBLIC_BLIND_USER_ID</span>
+                        :
+                      </div>
+                      <div className="mt-1 break-all font-mono text-sm text-slate-100">{r.blindUser.id}</div>
                     </div>
                   </div>
                   <form

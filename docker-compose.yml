@@ -42,6 +42,7 @@ services:
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: "change-me"
       DEVICE_API_KEY: "change-me"
+      PHONE_APP_BASE_URL: "http://10.136.37.252:3000"
       PUSHER_APP_ID: ""
       PUSHER_KEY: ""
       PUSHER_SECRET: ""
