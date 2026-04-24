@@ -1,0 +1,96 @@
+import mqtt from "mqtt";
+
+const MQTT_URL = process.env.MQTT_URL || "mqtt://mqtt-broker:1883";
+const MQTT_TOPIC_DISTANCE = process.env.MQTT_TOPIC_DISTANCE || "senzor/distanta";
+const MQTT_TOPIC_ACCEL = process.env.MQTT_TOPIC_ACCEL || "senzor/acceleratie";
+
+// Because your ESP32 publishes without a device id in the topic/payload,
+// we map the incoming MQTT messages to ONE registered device serial number.
+// If you have multiple devices later, change ESP32 topics to include serial:
+//   devices/<serial>/distanta  and  devices/<serial>/acceleratie
+const DEVICE_SERIAL = process.env.DEVICE_SERIAL || "ESP32_Senzori";
+
+const APP_BASE_URL = process.env.APP_BASE_URL || "http://web:3000";
+const DEVICE_API_KEY = process.env.DEVICE_API_KEY || "";
+
+if (!DEVICE_API_KEY) {
+  console.error("Missing DEVICE_API_KEY env var (must match web app DEVICE_API_KEY).");
+  process.exit(1);
+}
+
+let lastAccelX = null;
+
+function toNumber(payload) {
+  const s = payload.toString("utf8").trim().replace(",", ".");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function postTelemetry({ distanceCm, accelX }) {
+  const url = `${APP_BASE_URL}/api/devices/${encodeURIComponent(DEVICE_SERIAL)}/telemetry`;
+
+  const body = {
+    distanceCm,
+    // This field is optional and currently ignored by the API route,
+    // but we keep it for future telemetry expansion.
+    accelX,
+    firmwareVersion: "mqtt-bridge",
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${DEVICE_API_KEY}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Telemetry POST failed ${res.status}: ${text}`);
+  }
+}
+
+console.log("MQTT ingestor starting");
+console.log("MQTT_URL:", MQTT_URL);
+console.log("Topics:", MQTT_TOPIC_DISTANCE, MQTT_TOPIC_ACCEL);
+console.log("DEVICE_SERIAL:", DEVICE_SERIAL);
+console.log("APP_BASE_URL:", APP_BASE_URL);
+
+const client = mqtt.connect(MQTT_URL, {
+  clientId: `blindhat-worker-${Math.random().toString(16).slice(2)}`,
+  reconnectPeriod: 2000,
+});
+
+client.on("connect", () => {
+  console.log("MQTT connected");
+  client.subscribe([MQTT_TOPIC_DISTANCE, MQTT_TOPIC_ACCEL], (err) => {
+    if (err) console.error("MQTT subscribe error", err);
+    else console.log("MQTT subscribed");
+  });
+});
+
+client.on("error", (err) => {
+  console.error("MQTT error", err);
+});
+
+client.on("message", async (topic, payload) => {
+  try {
+    if (topic === MQTT_TOPIC_ACCEL) {
+      lastAccelX = toNumber(payload);
+      return;
+    }
+
+    if (topic === MQTT_TOPIC_DISTANCE) {
+      const distance = toNumber(payload);
+      if (distance == null) return;
+
+      await postTelemetry({ distanceCm: distance, accelX: lastAccelX });
+      console.log("Forwarded distance", distance, "accelX", lastAccelX);
+    }
+  } catch (e) {
+    console.error("INGEST_ERROR", e);
+  }
+});
+

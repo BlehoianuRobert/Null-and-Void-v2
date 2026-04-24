@@ -1,4 +1,14 @@
 services:
+  mqtt-broker:
+    image: eclipse-mosquitto:2
+    container_name: mqtt-broker
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -43,6 +53,24 @@ services:
       PUSHER_CLUSTER: ""
     ports:
       - "3000:3000"
+
+  mqtt-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    restart: unless-stopped
+    depends_on:
+      - mqtt-broker
+      - web
+    environment:
+      MQTT_URL: mqtt://mqtt-broker:1883
+      MQTT_TOPIC_DISTANCE: senzor/distanta
+      MQTT_TOPIC_ACCEL: senzor/acceleratie
+      # IMPORTANT: must match a registered Device.serialNumber in the app
+      DEVICE_SERIAL: ESP32_Senzori
+      APP_BASE_URL: http://web:3000
+      DEVICE_API_KEY: "change-me"
 
 volumes:
   db_data:
