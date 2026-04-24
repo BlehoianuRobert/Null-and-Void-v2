@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { EspDeviceTelemetryLive } from "@/components/caregiver/esp-device-telemetry-live";
 import { addPatientAction, registerDeviceForPatientAction, removePatientAction } from "./actions";
 
 const errorMessages: Record<string, string> = {
@@ -305,38 +306,32 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
                       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Latest from ESP (MQTT)
                       </div>
+                      <p className="text-[11px] leading-relaxed text-slate-500">
+                        This block reads the <span className="text-slate-400">database</span> (updated only after{" "}
+                        <span className="font-mono text-slate-400">mqtt-worker</span> successfully POSTs to{" "}
+                        <span className="font-mono text-slate-400">/api/devices/&lt;MAC&gt;/telemetry</span>). If it
+                        stays empty: confirm the ESP MQTT broker IP/port is the <span className="text-slate-400">same</span> host
+                        where Docker publishes <span className="font-mono text-slate-400">1883</span>, check{" "}
+                        <span className="font-mono text-slate-400">mqtt-worker</span> logs for{" "}
+                        <span className="text-slate-400">Forwarded distance</span> vs{" "}
+                        <span className="text-red-300/90">401/404</span>, and that{" "}
+                        <span className="font-mono text-slate-400">DEVICE_API_KEY</span> matches on{" "}
+                        <span className="font-mono text-slate-400">web</span> and worker. Refreshes every few seconds
+                        below.
+                      </p>
                       {r.blindUser.devices.map((d) => (
-                        <div key={d.id} className="border-t border-slate-900 pt-3 first:border-t-0 first:pt-0">
-                          <div className="text-sm font-medium text-slate-200">
-                            {d.label}{" "}
-                            <span className="font-normal text-slate-500">({d.serialNumber})</span>
-                          </div>
-                          <dl className="mt-2 grid gap-1 text-xs text-slate-400 sm:grid-cols-2">
-                            <div>
-                              <dt className="text-slate-500">Last distance</dt>
-                              <dd className="font-mono text-slate-200">
-                                {d.lastDistanceCm != null ? `${d.lastDistanceCm} cm` : "—"}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="text-slate-500">Last accel X</dt>
-                              <dd className="font-mono text-slate-200">
-                                {d.lastAccelX != null ? String(d.lastAccelX) : "—"}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="text-slate-500">Last seen</dt>
-                              <dd>{d.lastSeenAt ? d.lastSeenAt.toLocaleString() : "—"}</dd>
-                            </div>
-                            <div>
-                              <dt className="text-slate-500">Online / battery</dt>
-                              <dd>
-                                {d.isOnline ? "Online" : "Offline"}
-                                {d.batteryLevel != null ? ` • ${d.batteryLevel}%` : ""}
-                              </dd>
-                            </div>
-                          </dl>
-                        </div>
+                        <EspDeviceTelemetryLive
+                          key={d.id}
+                          serialNumber={d.serialNumber}
+                          label={d.label}
+                          initial={{
+                            lastDistanceCm: d.lastDistanceCm,
+                            lastAccelX: d.lastAccelX,
+                            lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
+                            isOnline: d.isOnline,
+                            batteryLevel: d.batteryLevel,
+                          }}
+                        />
                       ))}
                     </div>
                   ) : null}
