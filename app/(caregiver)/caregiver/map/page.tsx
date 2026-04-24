@@ -12,9 +12,9 @@ export default async function CaregiverMapPage() {
       <div>
         <h1 className="text-xl font-semibold">Map tracking</h1>
         <p className="mt-2 text-sm text-slate-400">
-          Shows the latest phone GPS ping per patient (from the Android app or MQTT{" "}
-          <span className="font-mono text-slate-300">phone/location</span>). Open a marker popup for exact time and
-          coordinates.
+          Shows phone GPS history with ranges (1d, 2d, 1 week, or selected day) and total distance in km for each
+          patient. Data comes from the Android app / MQTT <span className="font-mono text-slate-300">phone/location</span>{" "}
+          pings.
         </p>
       </div>
 

@@ -3,13 +3,49 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+function haversineM(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function parseWindow(url: URL): { since: Date; until: Date; mode: "1d" | "2d" | "1w" | "day"; day: string | null } {
+  const mode = (url.searchParams.get("window") ?? "1d").toLowerCase();
+  const now = new Date();
+
+  if (mode === "2d") {
+    return { since: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), until: now, mode: "2d", day: null };
+  }
+  if (mode === "1w" || mode === "7d") {
+    return { since: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), until: now, mode: "1w", day: null };
+  }
+  if (mode === "day") {
+    const dayRaw = (url.searchParams.get("day") ?? "").trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dayRaw)) {
+      const since = new Date(`${dayRaw}T00:00:00.000Z`);
+      const until = new Date(`${dayRaw}T23:59:59.999Z`);
+      return { since, until, mode: "day", day: dayRaw };
+    }
+  }
+
+  return { since: new Date(now.getTime() - 24 * 60 * 60 * 1000), until: now, mode: "1d", day: null };
+}
+
+export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || session.user.role !== "CAREGIVER") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const caregiverId = session.user.id;
+  const url = new URL(req.url);
+  const windowInfo = parseWindow(url);
 
   const relationships = await prisma.careRelationship.findMany({
     where: { caregiverId, isActive: true },
@@ -21,11 +57,14 @@ export async function GET() {
 
   const nameByUserId = new Map(relationships.map((r) => [r.blindUserId, r.blindUser.name]));
 
-  // Latest phone ping with GPS for each blind user
+  // Phone GPS pings for selected range
   const pings = await prisma.locationPing.findMany({
-    where: { userId: { in: blindUserIds } },
-    orderBy: { sentAt: "desc" },
-    take: 300,
+    where: {
+      userId: { in: blindUserIds },
+      sentAt: { gte: windowInfo.since, lte: windowInfo.until },
+    },
+    orderBy: [{ userId: "asc" }, { sentAt: "asc" }],
+    take: 12000,
     select: {
       userId: true,
       sentAt: true,
@@ -34,22 +73,52 @@ export async function GET() {
     },
   });
 
-  const firstPingByUserId = new Map<string, typeof pings[number]>();
+  const grouped = new Map<string, typeof pings>();
   for (const p of pings) {
-    if (!firstPingByUserId.has(p.userId)) firstPingByUserId.set(p.userId, p);
+    const list = grouped.get(p.userId) ?? [];
+    list.push(p);
+    grouped.set(p.userId, list);
   }
 
-  const points = Array.from(firstPingByUserId.entries()).map(([blindUserId, p]) => ({
-    blindUserId,
-    blindUserName: nameByUserId.get(blindUserId) ?? "Unknown",
-    deviceSerialNumber: "PHONE",
-    severity: "MEDIUM" as const,
-    distanceCm: 0,
-    triggeredAt: p.sentAt.toISOString(),
-    latitude: p.latitude,
-    longitude: p.longitude,
-  }));
+  const users = blindUserIds.map((blindUserId) => {
+    const userPings = grouped.get(blindUserId) ?? [];
+    let totalM = 0;
+    for (let i = 1; i < userPings.length; i++) {
+      const prev = userPings[i - 1];
+      const cur = userPings[i];
+      const d = haversineM(prev.latitude, prev.longitude, cur.latitude, cur.longitude);
+      // Ignore likely GPS spikes; >500m between 15s samples is usually noise.
+      if (d <= 500) totalM += d;
+    }
 
-  return NextResponse.json({ points });
+    const latest = userPings.length > 0 ? userPings[userPings.length - 1] : null;
+    return {
+      blindUserId,
+      blindUserName: nameByUserId.get(blindUserId) ?? "Unknown",
+      totalDistanceKm: Number((totalM / 1000).toFixed(2)),
+      pingCount: userPings.length,
+      lastSeenAt: latest?.sentAt.toISOString() ?? null,
+      latestPoint: latest
+        ? {
+            latitude: latest.latitude,
+            longitude: latest.longitude,
+            triggeredAt: latest.sentAt.toISOString(),
+          }
+        : null,
+      track: userPings.map((p) => ({
+        latitude: p.latitude,
+        longitude: p.longitude,
+        triggeredAt: p.sentAt.toISOString(),
+      })),
+    };
+  });
+
+  return NextResponse.json({
+    window: windowInfo.mode,
+    day: windowInfo.day,
+    since: windowInfo.since.toISOString(),
+    until: windowInfo.until.toISOString(),
+    users,
+  });
 }
 

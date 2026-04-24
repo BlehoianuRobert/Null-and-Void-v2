@@ -134,6 +134,7 @@ function Navbar({ scrolled }) {
           {[
             { label: "Features", href: "#features" },
             { label: "Platform", href: "#platform" },
+            { label: "Pros & Cons", href: "#tradeoffs" },
             { label: "How It Works", href: "#how-it-works" },
             { label: "Hardware", href: "#hardware" },
             { label: "Gallery", href: "#gallery" },
@@ -555,6 +556,97 @@ function PlatformSection() {
   );
 }
 
+// ─── Pros / Cons / Best Scenario ─────────────────────────────────────────────
+
+function TradeoffsSection() {
+  const pros = [
+    "Caregiver does not need to stay physically next to the blind person all day.",
+    "Live map + distance telemetry improve awareness and faster check-ins.",
+    "Phone fallback path can keep reporting even when hat-to-server connectivity is unstable.",
+    "One dashboard combines hat telemetry, location history, and impact alerts.",
+  ];
+
+  const cons = [
+    "High data traffic when location is sent frequently (battery + mobile data cost).",
+    "Reliability depends on network quality (Wi-Fi / hotspot / internet path).",
+    "GPS and accelerometer heuristics can produce noisy or false-positive events.",
+    "More moving parts (ESP, phone app, MQTT, API) means more deployment complexity.",
+  ];
+
+  return (
+    <section
+      id="tradeoffs"
+      className="py-24 px-6"
+      style={{ borderTop: "1px solid rgba(51,65,85,0.4)", background: "rgba(10,15,26,0.55)" }}
+    >
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-14 animate-on-scroll">
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-slate-400 text-xs font-semibold tracking-wide mb-4"
+            style={{ border: "1px solid rgba(51,65,85,0.7)", background: "rgba(30,41,59,0.5)" }}
+          >
+            System Reality Check
+          </div>
+          <h2 className="text-4xl font-extrabold text-white mb-4">Pros, Cons, and Best Scenario</h2>
+          <p className="text-slate-400 max-w-3xl mx-auto text-sm leading-relaxed">
+            BlindHat brings strong caregiver visibility, but network design matters. The architecture below is the
+            most robust option for real-life movement outside a single home LAN.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div
+            className="animate-on-scroll rounded-2xl p-7"
+            style={{ background: "rgba(13,20,36,0.92)", border: "1px solid rgba(29,158,117,0.35)" }}
+          >
+            <h3 className="text-xl font-bold text-white mb-4">Pros</h3>
+            <ul className="space-y-3">
+              {pros.map((item, i) => (
+                <li key={i} className="text-sm text-slate-300 leading-relaxed flex gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1D9E75]" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div
+            className="animate-on-scroll rounded-2xl p-7"
+            style={{ background: "rgba(13,20,36,0.92)", border: "1px solid rgba(245,158,11,0.35)" }}
+          >
+            <h3 className="text-xl font-bold text-white mb-4">Cons</h3>
+            <ul className="space-y-3">
+              {cons.map((item, i) => (
+                <li key={i} className="text-sm text-slate-300 leading-relaxed flex gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div
+          className="mt-8 animate-on-scroll rounded-2xl p-7"
+          style={{ border: "1px dashed rgba(14,165,233,0.45)", background: "rgba(14,165,233,0.07)" }}
+        >
+          <h3 className="text-xl font-bold text-white mb-3">Best scenario (recommended)</h3>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            Use the phone as the connectivity bridge: <span className="font-semibold text-slate-100">ESP sends data to
+            the phone</span>, then the <span className="font-semibold text-slate-100">phone sends to the main server API</span>.
+            This avoids dependence on the hat reaching the Pi directly over hotspot routing. Expose the Pi/API through
+            a secure public entry point (for example a Cloudflare Tunnel) so the phone can always push telemetry when
+            mobile internet is available.
+          </p>
+          <div className="mt-3 text-xs text-slate-400 font-mono">
+            ESP sensor {"->"} Phone app relay {"->"} Cloudflare Tunnel / public API {"->"} Main server (Pi/PostgreSQL)
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Gallery ─────────────────────────────────────────────────────────────────
 
 const GALLERY_SLOTS = [
@@ -959,6 +1051,7 @@ export default function LandingPage() {
       <StatsBar />
       <FeaturesSection />
       <PlatformSection />
+      <TradeoffsSection />
       <GallerySection />
       <HowItWorksSection />
       <TechStackSection />
