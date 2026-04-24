@@ -451,8 +451,8 @@ function FeaturesSection() {
 // ─── Gallery ─────────────────────────────────────────────────────────────────
 
 const GALLERY_SLOTS = [
-  { label: "ESP32-C6 Module", sub: "Microcontroller", src: null },
-  { label: "HC-SR04 Sensor", sub: "Ultrasonic Distance", src: null },
+  { label: "Hardware Build", sub: "Prototype Photo", src: "/images/poza1.jpeg" },
+  { label: "Hardware Build", sub: "Prototype Photo", src: "/images/poza2.jpeg" },
   { label: "MPU6050 Module", sub: "6-Axis IMU", src: null },
   { label: "Hat Assembly", sub: "Complete Hardware", src: null },
   { label: "Live Dashboard", sub: "Caregiver Interface", src: null },
@@ -516,9 +516,6 @@ function GallerySection() {
             </div>
           ))}
         </div>
-        <p className="text-center text-slate-700 text-xs mt-5 italic">
-          To add images: place files in <code className="bg-slate-800/80 px-1.5 py-0.5 rounded text-slate-500">public/images/</code> and set the <code className="bg-slate-800/80 px-1.5 py-0.5 rounded text-slate-500">src</code> in <code className="bg-slate-800/80 px-1.5 py-0.5 rounded text-slate-500">GALLERY_SLOTS</code> inside LandingPage.jsx
-        </p>
       </div>
     </section>
   );
