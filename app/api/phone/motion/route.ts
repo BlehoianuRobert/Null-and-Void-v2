@@ -55,5 +55,24 @@ export async function POST(req: Request) {
     select: { id: true },
   });
 
+  // In-app caregiver notifications: phone accelerometer only (not hat / distance alerts).
+  const minPeak = Number(process.env.PHONE_IMPACT_NOTIFY_MIN_PEAK_MS2 ?? "28");
+  const notifyCaregivers = Number.isFinite(minPeak) ? body.peakMagnitudeMs2 >= minPeak : true;
+  if (notifyCaregivers) {
+    const caregivers = await prisma.careRelationship.findMany({
+      where: { blindUserId: body.blindUserId, isActive: true },
+      select: { caregiverId: true },
+    });
+    if (caregivers.length > 0) {
+      await prisma.caregiverNotification.createMany({
+        data: caregivers.map((c) => ({
+          caregiverId: c.caregiverId,
+          safetyMotionAlertId: row.id,
+          sentAt: triggeredAt,
+        })),
+      });
+    }
+  }
+
   return NextResponse.json({ ok: true, id: row.id });
 }

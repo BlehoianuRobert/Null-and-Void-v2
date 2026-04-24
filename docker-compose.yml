@@ -47,6 +47,8 @@ services:
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: "change-me"
       DEVICE_API_KEY: ${DEVICE_API_KEY:-change-me}
+      # Phone → caregiver in-app notifications only if peak magnitude (m/s²) ≥ this (default 28).
+      PHONE_IMPACT_NOTIFY_MIN_PEAK_MS2: ${PHONE_IMPACT_NOTIFY_MIN_PEAK_MS2:-28}
       PHONE_APP_BASE_URL: "http://10.136.37.252:3000"
       PUSHER_APP_ID: ""
       PUSHER_KEY: ""
@@ -70,8 +72,9 @@ services:
       MQTT_TOPIC_ACCEL: senzor/acceleratie
       MQTT_TOPIC_PHONE_LOCATION: phone/location
       MQTT_TOPIC_PHONE_MOTION: phone/motion
-      # Plain numeric MQTT payloads: must match Device.serialNumber in My users. Override via stack env DEVICE_SERIAL if you change hats.
-      DEVICE_SERIAL: ${DEVICE_SERIAL:-98:A3:16:7E:57:C0}
+      # Plain numeric MQTT payloads: optional override; if unset, DEFAULT_DEVICE_MAC_FOR_PLAIN_PAYLOAD is used (see mqtt-ingestor.mjs).
+      DEVICE_SERIAL: ${DEVICE_SERIAL:-}
+      DEFAULT_DEVICE_MAC_FOR_PLAIN_PAYLOAD: ${DEFAULT_DEVICE_MAC_FOR_PLAIN_PAYLOAD:-98:A3:16:7E:57:C0}
       APP_BASE_URL: http://web:3000
       DEVICE_API_KEY: ${DEVICE_API_KEY:-change-me}
 

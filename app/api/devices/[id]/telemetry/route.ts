@@ -10,6 +10,15 @@ function getBearerToken(req: Request) {
   return token;
 }
 
+function asFiniteNumber(v: unknown): number | undefined {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const n = Number(String(v).replace(",", "."));
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
+}
+
 export async function POST(req: Request, ctx: { params: { id: string } }) {
   const apiKey = process.env.DEVICE_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "Server not configured" }, { status: 500 });
@@ -23,19 +32,11 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   const canon = normalizeDeviceSerial(fromUrl);
   const serialVariants = [...new Set([fromUrl, canon, canon.replace(/:/g, "-")])].filter(Boolean);
 
-  const body = (await req.json().catch(() => null)) as
-    | {
-        distanceCm?: number;
-        accelX?: number;
-        batteryLevel?: number;
-        firmwareVersion?: string;
-        latitude?: number;
-        longitude?: number;
-      }
-    | null;
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
 
-  if (!body || typeof body.distanceCm !== "number") {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  const distanceCmRaw = asFiniteNumber(body?.distanceCm);
+  if (!body || distanceCmRaw === undefined) {
+    return NextResponse.json({ error: "Invalid body: distanceCm must be a number" }, { status: 400 });
   }
 
   const device = await prisma.device.findFirst({
@@ -54,9 +55,9 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   if (!device) return NextResponse.json({ error: "Device not registered" }, { status: 404 });
 
   const now = new Date();
-  const distanceCm = Math.max(0, Math.floor(body.distanceCm));
-  const lastAccelX =
-    typeof body.accelX === "number" && Number.isFinite(body.accelX) ? body.accelX : undefined;
+  const distanceCm = Math.max(0, Math.floor(distanceCmRaw));
+  const accelParsed = asFiniteNumber(body.accelX);
+  const lastAccelX = accelParsed !== undefined ? accelParsed : undefined;
 
   await prisma.device.update({
     where: { id: device.id },
@@ -65,7 +66,10 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       lastSeenAt: now,
       lastDistanceCm: distanceCm,
       ...(lastAccelX !== undefined ? { lastAccelX } : {}),
-      batteryLevel: typeof body.batteryLevel === "number" ? body.batteryLevel : undefined,
+      batteryLevel: (() => {
+        const b = asFiniteNumber(body.batteryLevel);
+        return b !== undefined ? Math.round(Math.max(0, Math.min(100, b))) : undefined;
+      })(),
       firmwareVersion: typeof body.firmwareVersion === "string" ? body.firmwareVersion : undefined,
     },
   });
@@ -86,8 +90,8 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       distanceCm,
       severity,
       triggeredAt: now,
-      latitude: typeof body.latitude === "number" ? body.latitude : null,
-      longitude: typeof body.longitude === "number" ? body.longitude : null,
+      latitude: asFiniteNumber(body.latitude) ?? null,
+      longitude: asFiniteNumber(body.longitude) ?? null,
     },
     select: { id: true },
   });

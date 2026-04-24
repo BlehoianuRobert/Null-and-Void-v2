@@ -9,8 +9,12 @@ const MQTT_TOPIC_PHONE_MOTION = process.env.MQTT_TOPIC_PHONE_MOTION || "phone/mo
 // Device routing:
 // 1) Preferred: JSON on distance topic includes deviceMac | mac | serial | serialNumber (same MAC as in the web app).
 //    Then Portainer does NOT need DEVICE_SERIAL per hat — caregiver registers MAC once; ESP sends it each message.
-// 2) Legacy: plain number payload — uses env DEVICE_SERIAL (single hat).
+// 2) Legacy: plain number payload — needs a MAC: DEVICE_SERIAL env, or JSON deviceMac on each message,
+//    or DEFAULT_DEVICE_MAC_FOR_PLAIN_PAYLOAD (same default as compose) so a bare ESP number still routes.
 const DEVICE_SERIAL = (process.env.DEVICE_SERIAL || "").trim();
+const DEFAULT_PLAIN_MAC = (
+  process.env.DEFAULT_DEVICE_MAC_FOR_PLAIN_PAYLOAD || "98:A3:16:7E:57:C0"
+).trim();
 
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://web:3000";
 const DEVICE_API_KEY = process.env.DEVICE_API_KEY || "";
@@ -20,10 +24,10 @@ if (!DEVICE_API_KEY) {
   process.exit(1);
 }
 
-if (!DEVICE_SERIAL) {
-  console.warn(
-    "DEVICE_SERIAL not set: plain numeric distance payloads will be ignored unless they are JSON with deviceMac/mac/serial."
-  );
+function serialForPlainPayload(parsedSerial) {
+  if (parsedSerial) return normalizeDeviceSerial(parsedSerial);
+  if (DEVICE_SERIAL) return normalizeDeviceSerial(DEVICE_SERIAL);
+  return normalizeDeviceSerial(DEFAULT_PLAIN_MAC);
 }
 
 let lastAccelX = null;
@@ -158,7 +162,8 @@ console.log(
   MQTT_TOPIC_PHONE_LOCATION,
   MQTT_TOPIC_PHONE_MOTION
 );
-console.log("DEVICE_SERIAL (fallback for plain payloads):", DEVICE_SERIAL || "(none)");
+console.log("DEVICE_SERIAL (override for plain payloads):", DEVICE_SERIAL || "(none)");
+console.log("DEFAULT_DEVICE_MAC_FOR_PLAIN_PAYLOAD:", DEFAULT_PLAIN_MAC);
 console.log("APP_BASE_URL:", APP_BASE_URL);
 
 const client = mqtt.connect(MQTT_URL, {
@@ -236,23 +241,29 @@ client.on("message", async (topic, payload) => {
     }
 
     if (topic === MQTT_TOPIC_DISTANCE) {
+      const rawPreview = payload.toString("utf8").trim().slice(0, 200);
       const parsed = parseDistancePayload(payload);
-      if (!parsed) return;
-
-      const serial = normalizeDeviceSerial(parsed.serial || DEVICE_SERIAL);
-      if (!serial) {
-        console.error(
-          "Distance MQTT: could not determine device. Send JSON e.g. {\"distanceCm\":42,\"deviceMac\":\"98:A3:16:7E:57:C0\"} or set DEVICE_SERIAL in the worker env."
-        );
+      if (!parsed) {
+        console.warn("Distance MQTT: could not parse payload:", rawPreview);
         return;
       }
 
-      await postTelemetry({
-        distanceCm: parsed.distanceCm,
-        accelX: lastAccelX,
-        serialNumber: serial,
-      });
-      console.log("Forwarded distance", parsed.distanceCm, "device", serial, "accelX", lastAccelX);
+      const serial = serialForPlainPayload(parsed.serial);
+      if (!serial) {
+        console.error("Distance MQTT: no device MAC after routing; payload:", rawPreview);
+        return;
+      }
+
+      try {
+        await postTelemetry({
+          distanceCm: parsed.distanceCm,
+          accelX: lastAccelX,
+          serialNumber: serial,
+        });
+        console.log("Forwarded distance", parsed.distanceCm, "cm → device", serial, "accelX", lastAccelX);
+      } catch (e) {
+        console.error("Distance MQTT: POST failed for device", serial, "payload:", rawPreview, e);
+      }
     }
   } catch (e) {
     console.error("INGEST_ERROR", e);

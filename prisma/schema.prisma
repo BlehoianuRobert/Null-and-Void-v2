@@ -110,6 +110,7 @@ model AlertLog {
   user   User   @relation("AlertUser", fields: [userId], references: [id], onDelete: Cascade)
   acknowledgedBy User? @relation("AlertAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
 
+  /// Hat / ultrasonic distance alerts only (not phone accelerometer).
   notifications CaregiverNotification[]
 
   @@index([deviceId])
@@ -120,19 +121,25 @@ model AlertLog {
 }
 
 model CaregiverNotification {
-  id          String   @id @default(cuid())
-  caregiverId String
-  alertLogId  String
-  sentAt      DateTime @default(now())
-  readAt      DateTime?
-  channel     NotificationChannel @default(IN_APP)
+  id                   String   @id @default(cuid())
+  caregiverId          String
+  /// Present for hat distance / ultrasonic threshold alerts.
+  alertLogId           String?
+  /// Present for phone accelerometer “hard impact” safety events only.
+  safetyMotionAlertId  String?
+  sentAt               DateTime @default(now())
+  readAt               DateTime?
+  channel              NotificationChannel @default(IN_APP)
 
-  caregiver User    @relation("CaregiverNotifications", fields: [caregiverId], references: [id], onDelete: Cascade)
-  alertLog  AlertLog @relation(fields: [alertLogId], references: [id], onDelete: Cascade)
+  caregiver         User               @relation("CaregiverNotifications", fields: [caregiverId], references: [id], onDelete: Cascade)
+  alertLog          AlertLog?          @relation(fields: [alertLogId], references: [id], onDelete: Cascade)
+  safetyMotionAlert SafetyMotionAlert? @relation(fields: [safetyMotionAlertId], references: [id], onDelete: Cascade)
 
   @@index([caregiverId])
   @@index([readAt])
   @@index([sentAt])
+  @@index([alertLogId])
+  @@index([safetyMotionAlertId])
 }
 
 model LocationPing {
@@ -161,7 +168,8 @@ model SafetyMotionAlert {
   latitude         Float?
   longitude        Float?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifications CaregiverNotification[]
 
   @@index([userId, triggeredAt])
   @@index([triggeredAt])

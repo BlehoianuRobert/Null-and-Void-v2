@@ -41,6 +41,8 @@ void setup() {
     Serial.print(".");
   }
   Serial.println("\nWiFi Conectat");
+  Serial.print("WiFi MAC (must match My users / DEVICE_SERIAL): ");
+  Serial.println(WiFi.macAddress());
 
   client.setServer(mqtt_server, 1883);
 
@@ -90,12 +92,18 @@ void loop() {
   }
 
   // --- MQTT PUBLISH ---
-  char dStr[10], aStr[10];
-  dtostrf(distanceCm, 1, 2, dStr);
+  // JSON so the server can route without relying on worker DEVICE_SERIAL (MAC must match My users).
+  char aStr[12];
   dtostrf(a.acceleration.x, 1, 2, aStr);
-  
-  client.publish("senzor/distanta", dStr);
   client.publish("senzor/acceleratie", aStr);
+
+  char json[160];
+  String mac = WiFi.macAddress();
+  int dcm = (int)(distanceCm + 0.5f);
+  if (dcm < 0) dcm = 0;
+  if (dcm > 500) dcm = 500;
+  snprintf(json, sizeof(json), "{\"distanceCm\":%d,\"deviceMac\":\"%s\"}", dcm, mac.c_str());
+  client.publish("senzor/distanta", json);
 
   delay(500);
 }
