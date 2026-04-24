@@ -5,8 +5,6 @@ services:
     ports:
       - "${MQTT_PORT:-1883}:1883"
       - "${MQTT_WS_PORT:-9001}:9001"
-    volumes:
-      - ./mosquitto:/mosquitto/config:ro
 
   db:
     image: postgres:16-alpine
