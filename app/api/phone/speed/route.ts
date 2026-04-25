@@ -19,40 +19,31 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as
     | {
         blindUserId?: string;
-        latitude?: number;
-        longitude?: number;
-        accuracyM?: number;
         speedMps?: number;
         sentAt?: string;
       }
     | null;
 
-  if (!body?.blindUserId || typeof body.latitude !== "number" || typeof body.longitude !== "number") {
+  if (!body?.blindUserId || typeof body.speedMps !== "number" || !Number.isFinite(body.speedMps)) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const sentAt = body.sentAt ? new Date(body.sentAt) : new Date();
+  const user = await prisma.user.findFirst({
+    where: { id: body.blindUserId, role: "BLIND_USER", isActive: true },
+    select: { id: true },
+  });
+  if (!user) return NextResponse.json({ error: "Unknown blind user" }, { status: 404 });
 
-  await prisma.locationPing.create({
+  const sentAt = body.sentAt ? new Date(body.sentAt) : new Date();
+  const speedMps = Math.max(0, body.speedMps);
+
+  await prisma.device.updateMany({
+    where: { ownerId: body.blindUserId },
     data: {
-      userId: body.blindUserId,
-      latitude: body.latitude,
-      longitude: body.longitude,
-      accuracyM: typeof body.accuracyM === "number" ? body.accuracyM : null,
-      speedMps: typeof body.speedMps === "number" ? body.speedMps : null,
-      sentAt,
+      lastPhoneSpeedMps: speedMps,
+      lastPhoneSpeedAt: sentAt,
     },
   });
-
-  if (typeof body.speedMps === "number" && Number.isFinite(body.speedMps)) {
-    await prisma.device.updateMany({
-      where: { ownerId: body.blindUserId },
-      data: {
-        lastPhoneSpeedMps: Math.max(0, body.speedMps),
-        lastPhoneSpeedAt: sentAt,
-      },
-    });
-  }
 
   return NextResponse.json({ ok: true });
 }

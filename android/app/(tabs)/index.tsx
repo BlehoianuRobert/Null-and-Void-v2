@@ -31,6 +31,7 @@ const ENV_BLIND_USER_ID = (process.env.EXPO_PUBLIC_BLIND_USER_ID ?? '').trim();
 const MOTION_COOLDOWN_MS = 90_000;
 const SUPPRESS_AFTER_OK_MS = 10 * 60 * 1000;
 const LOCATION_SEND_INTERVAL_MS = 120_000;
+const SPEED_SEND_INTERVAL_MS = 5000;
 
 function normalizeApiBaseInput(raw: string): string {
   let s = raw.trim();
@@ -145,6 +146,34 @@ async function postPhoneMotion(
   }
 }
 
+async function postPhoneSpeed(
+  apiBase: string,
+  body: {
+    blindUserId: string;
+    speedMps: number;
+    sentAt: string;
+  }
+) {
+  const url = `${apiBase}/api/phone/speed`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${DEVICE_API_KEY}`,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(`Network request failed. Check API base URL (${apiBase}) and phone/WiFi network.`);
+  }
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    throw new Error(t || `HTTP ${res.status}`);
+  }
+}
+
 export default function TrackScreen() {
   const [tracking, setTracking] = useState(false);
   const [status, setStatus] = useState<string>('');
@@ -165,6 +194,9 @@ export default function TrackScreen() {
   const suppressUntilRef = useRef(0);
   const prevMagRef = useRef<number | null>(null);
   const lastLowGAtRef = useRef<number | null>(null);
+  const lastLocationPostAtRef = useRef(0);
+  const lastSpeedPostAtRef = useRef(0);
+  const lastSpeedSampleRef = useRef<{ latitude: number; longitude: number; atMs: number } | null>(null);
 
   useEffect(() => {
     void Promise.all([AsyncStorage.getItem(STORAGE_PATIENT_ID), AsyncStorage.getItem(STORAGE_API_BASE)]).then(
@@ -216,6 +248,9 @@ export default function TrackScreen() {
     setStatus('Stopped');
     prevMagRef.current = null;
     lastLowGAtRef.current = null;
+    lastLocationPostAtRef.current = 0;
+    lastSpeedPostAtRef.current = 0;
+    lastSpeedSampleRef.current = null;
   }, []);
 
   const sendOnce = useCallback(async () => {
@@ -240,6 +275,15 @@ export default function TrackScreen() {
       speedMps: loc.coords.speed ?? undefined,
       sentAt,
     });
+    if (typeof loc.coords.speed === 'number' && Number.isFinite(loc.coords.speed)) {
+      await postPhoneSpeed(effectiveApiBase, {
+        blindUserId: effectivePatientId,
+        speedMps: Math.max(0, loc.coords.speed),
+        sentAt,
+      });
+      lastSpeedPostAtRef.current = Date.now();
+    }
+    lastLocationPostAtRef.current = Date.now();
     setLastOk(new Date().toLocaleTimeString());
   }, [configOk, effectivePatientId, effectiveApiBase]);
 
@@ -273,8 +317,8 @@ export default function TrackScreen() {
     subRef.current = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.Balanced,
-        // Send roughly every 2 minutes while tracking (also sends once immediately on Start).
-        timeInterval: LOCATION_SEND_INTERVAL_MS,
+        // Keep updates frequent for realtime speed; persist full location every 2 minutes.
+        timeInterval: SPEED_SEND_INTERVAL_MS,
         distanceInterval: 0,
       },
       async (loc) => {
@@ -284,14 +328,53 @@ export default function TrackScreen() {
         };
         try {
           const sentAt = new Date().toISOString();
-          await postPhoneLocation(effectiveApiBase, {
-            blindUserId: effectivePatientId,
+
+          const nowMs = Date.now();
+          let speedForRealtime: number | null = null;
+          if (typeof loc.coords.speed === 'number' && Number.isFinite(loc.coords.speed)) {
+            speedForRealtime = Math.max(0, loc.coords.speed);
+          } else if (lastSpeedSampleRef.current) {
+            const prev = lastSpeedSampleRef.current;
+            const dt = (nowMs - prev.atMs) / 1000;
+            if (dt > 0.5) {
+              const d = Math.sqrt(
+                Math.pow((loc.coords.latitude - prev.latitude) * 111139, 2) +
+                  Math.pow((loc.coords.longitude - prev.longitude) * 111139, 2)
+              );
+              const s = d / dt;
+              if (Number.isFinite(s) && s >= 0) speedForRealtime = s;
+            }
+          }
+          lastSpeedSampleRef.current = {
             latitude: loc.coords.latitude,
             longitude: loc.coords.longitude,
-            accuracyM: loc.coords.accuracy ?? undefined,
-            speedMps: loc.coords.speed ?? undefined,
-            sentAt,
-          });
+            atMs: nowMs,
+          };
+
+          if (
+            speedForRealtime != null &&
+            nowMs - lastSpeedPostAtRef.current >= SPEED_SEND_INTERVAL_MS
+          ) {
+            await postPhoneSpeed(effectiveApiBase, {
+              blindUserId: effectivePatientId,
+              speedMps: speedForRealtime,
+              sentAt,
+            });
+            lastSpeedPostAtRef.current = nowMs;
+          }
+
+          if (nowMs - lastLocationPostAtRef.current >= LOCATION_SEND_INTERVAL_MS) {
+            await postPhoneLocation(effectiveApiBase, {
+              blindUserId: effectivePatientId,
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+              accuracyM: loc.coords.accuracy ?? undefined,
+              speedMps: speedForRealtime ?? undefined,
+              sentAt,
+            });
+            lastLocationPostAtRef.current = nowMs;
+          }
+
           setLastOk(new Date().toLocaleTimeString());
           setLastErr(null);
         } catch (e: unknown) {

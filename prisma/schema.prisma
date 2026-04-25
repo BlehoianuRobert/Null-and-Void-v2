@@ -77,6 +77,8 @@ model Device {
   batteryLevel     Int?
   lastDistanceCm   Int?
   lastAccelX       Float?
+  lastPhoneSpeedMps Float?
+  lastPhoneSpeedAt  DateTime?
   isOnline         Boolean  @default(false)
   lastSeenAt       DateTime?
   ownerId          String
@@ -92,6 +94,7 @@ model Device {
   @@index([ownerId])
   @@index([isOnline])
   @@index([lastSeenAt])
+  @@index([lastPhoneSpeedAt])
 }
 
 model AlertLog {
