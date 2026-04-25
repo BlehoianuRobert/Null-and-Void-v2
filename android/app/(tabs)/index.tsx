@@ -31,6 +31,38 @@ const ENV_BLIND_USER_ID = (process.env.EXPO_PUBLIC_BLIND_USER_ID ?? '').trim();
 const MOTION_COOLDOWN_MS = 90_000;
 const SUPPRESS_AFTER_OK_MS = 10 * 60 * 1000;
 
+function mapLocationError(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e);
+  const msg = raw.toLowerCase();
+  if (msg.includes('location services') || msg.includes('location unavailable')) {
+    return 'Current location unavailable. Turn on phone Location/GPS and set mode to High accuracy.';
+  }
+  if (msg.includes('denied')) {
+    return 'Location permission denied. Allow location for this app in system settings.';
+  }
+  return raw || 'Location error';
+}
+
+async function getBestEffortLocation(): Promise<Location.LocationObject> {
+  const servicesEnabled = await Location.hasServicesEnabledAsync();
+  if (!servicesEnabled) {
+    throw new Error('Location services are disabled');
+  }
+
+  try {
+    return await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+  } catch {
+    const last = await Location.getLastKnownPositionAsync({
+      maxAge: 120_000,
+      requiredAccuracy: 150,
+    });
+    if (last) return last as Location.LocationObject;
+    throw new Error('Current location unavailable');
+  }
+}
+
 async function postPhoneLocation(
   apiBase: string,
   body: {
@@ -164,9 +196,12 @@ export default function TrackScreen() {
   const sendOnce = useCallback(async () => {
     if (!configOk) return;
     setLastErr(null);
-    const loc = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
+    let loc: Location.LocationObject;
+    try {
+      loc = await getBestEffortLocation();
+    } catch (e: unknown) {
+      throw new Error(mapLocationError(e));
+    }
     lastGeoRef.current = {
       latitude: loc.coords.latitude,
       longitude: loc.coords.longitude,
@@ -198,8 +233,15 @@ export default function TrackScreen() {
       return;
     }
 
+    if (Platform.OS === 'android') {
+      // Shows native prompt to enable better location provider on Android devices.
+      await Location.enableNetworkProviderAsync().catch(() => {
+        /* ignore; user can still proceed if GPS works */
+      });
+    }
+
     await sendOnce().catch((e: unknown) => {
-      setLastErr(e instanceof Error ? e.message : 'Send failed');
+      setLastErr(e instanceof Error ? e.message : mapLocationError(e));
     });
 
     subRef.current?.remove();
