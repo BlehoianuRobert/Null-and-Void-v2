@@ -49,6 +49,10 @@ services:
       DEVICE_API_KEY: ${DEVICE_API_KEY:-change-me}
       # Phone → caregiver in-app notifications only if peak magnitude (m/s²) ≥ this (default 28).
       PHONE_IMPACT_NOTIFY_MIN_PEAK_MS2: ${PHONE_IMPACT_NOTIFY_MIN_PEAK_MS2:-28}
+      # Trigger phone speed alert notifications if realtime speed exceeds this (km/h).
+      PHONE_SPEED_ALERT_THRESHOLD_KMH: ${PHONE_SPEED_ALERT_THRESHOLD_KMH:-4}
+      # Minimum delay between speed alerts for same user (milliseconds).
+      PHONE_SPEED_ALERT_COOLDOWN_MS: ${PHONE_SPEED_ALERT_COOLDOWN_MS:-180000}
       PHONE_APP_BASE_URL: "http://10.136.37.252:3000"
       PUSHER_APP_ID: ""
       PUSHER_KEY: ""

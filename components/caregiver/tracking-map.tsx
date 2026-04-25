@@ -22,6 +22,22 @@ type TrackingUser = {
     longitude: number;
     triggeredAt: string;
   }>;
+  esp: {
+    serialNumber: string;
+    label: string;
+    lastDistanceCm: number | null;
+    isOnline: boolean;
+    batteryLevel: number | null;
+    lastSeenAt: string | null;
+  } | null;
+  phone: {
+    realtimeSpeedMps: number | null;
+    realtimeSpeedAt: string | null;
+    lastGpsPingAt: string | null;
+    lastImpactAt: string | null;
+    lastImpactReason: string | null;
+    lastImpactPeakMs2: number | null;
+  };
 };
 
 const POLL_MS = 20_000;
@@ -52,6 +68,12 @@ function colorForUser(seed: string): string {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   return palette[h % palette.length];
+}
+
+function fmt(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isFinite(d.getTime()) ? d.toLocaleString() : "—";
 }
 
 export function TrackingMap() {
@@ -201,7 +223,13 @@ export function TrackingMap() {
                   pathOptions={{ color: colorForUser(u.blindUserId), weight: 4, opacity: 0.8 }}
                 />
               ) : null}
-              <Marker position={[latest.latitude, latest.longitude]}>
+              <Marker
+                position={[latest.latitude, latest.longitude]}
+                eventHandlers={{
+                  mouseover: (e) => e.target.openPopup(),
+                  mouseout: (e) => e.target.closePopup(),
+                }}
+              >
                 <Popup>
                   <div className="text-sm">
                     <div className="font-semibold">{u.blindUserName}</div>
@@ -213,6 +241,57 @@ export function TrackingMap() {
                     <div className="text-xs text-slate-600">Pings: {u.pingCount}</div>
                     <div className="mt-1 text-xs text-slate-600">
                       Last update: {u.lastSeenAt ? new Date(u.lastSeenAt).toLocaleString() : "—"}
+                    </div>
+                    <div className="mt-3 border-t border-slate-300/40 pt-2 text-xs">
+                      <div className="font-semibold text-slate-800">ESP details</div>
+                      {u.esp ? (
+                        <>
+                          <div className="mt-1 text-slate-700">
+                            {u.esp.label} ({u.esp.serialNumber})
+                          </div>
+                          <div className="text-slate-700">
+                            Distance: {u.esp.lastDistanceCm != null ? `${u.esp.lastDistanceCm} cm` : "—"}
+                          </div>
+                          <div className="text-slate-700">
+                            Status: {u.esp.isOnline ? "Online" : "Offline"}
+                            {u.esp.batteryLevel != null ? ` · ${u.esp.batteryLevel}%` : ""}
+                          </div>
+                          <div className="text-slate-600">Last ESP seen: {fmt(u.esp.lastSeenAt)}</div>
+                        </>
+                      ) : (
+                        <div className="mt-1 text-slate-600">No registered ESP device</div>
+                      )}
+                    </div>
+                    <div className="mt-2 border-t border-slate-300/40 pt-2 text-xs">
+                      <div className="font-semibold text-slate-800">Phone details</div>
+                      <div className="mt-1 text-slate-700">
+                        Realtime speed:{" "}
+                        {u.phone.realtimeSpeedMps != null
+                          ? `${u.phone.realtimeSpeedMps.toFixed(2)} m/s (${(u.phone.realtimeSpeedMps * 3.6).toFixed(
+                              1
+                            )} km/h)`
+                          : "—"}
+                      </div>
+                      <div className="text-slate-600">Speed updated: {fmt(u.phone.realtimeSpeedAt)}</div>
+                      <div className="text-slate-600">Last GPS ping: {fmt(u.phone.lastGpsPingAt)}</div>
+                      <div className="text-slate-700">
+                        Last impact:{" "}
+                        {u.phone.lastImpactPeakMs2 != null ? (
+                          u.phone.lastImpactReason === "SPEED_OVER_LIMIT" ? (
+                            `${u.phone.lastImpactPeakMs2.toFixed(2)} m/s (${(u.phone.lastImpactPeakMs2 * 3.6).toFixed(
+                              1
+                            )} km/h)`
+                          ) : (
+                            `${u.phone.lastImpactPeakMs2.toFixed(1)} m/s²`
+                          )
+                        ) : (
+                          "—"
+                        )}
+                        {u.phone.lastImpactReason
+                          ? ` · ${u.phone.lastImpactReason.replace(/_/g, " ").toLowerCase()}`
+                          : ""}
+                      </div>
+                      <div className="text-slate-600">Impact time: {fmt(u.phone.lastImpactAt)}</div>
                     </div>
                   </div>
                 </Popup>

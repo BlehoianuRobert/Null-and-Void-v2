@@ -53,9 +53,48 @@ export async function GET(req: Request) {
   });
 
   const blindUserIds = relationships.map((r) => r.blindUserId);
-  if (blindUserIds.length === 0) return NextResponse.json({ points: [] });
+  if (blindUserIds.length === 0) return NextResponse.json({ users: [] });
 
   const nameByUserId = new Map(relationships.map((r) => [r.blindUserId, r.blindUser.name]));
+
+  const [devices, motionAlerts] = await Promise.all([
+    prisma.device.findMany({
+      where: { ownerId: { in: blindUserIds } },
+      orderBy: [{ ownerId: "asc" }, { updatedAt: "desc" }],
+      select: {
+        ownerId: true,
+        serialNumber: true,
+        label: true,
+        lastDistanceCm: true,
+        isOnline: true,
+        batteryLevel: true,
+        lastSeenAt: true,
+        lastPhoneSpeedMps: true,
+        lastPhoneSpeedAt: true,
+      },
+    }),
+    prisma.safetyMotionAlert.findMany({
+      where: { userId: { in: blindUserIds } },
+      orderBy: [{ userId: "asc" }, { triggeredAt: "desc" }],
+      select: {
+        userId: true,
+        triggeredAt: true,
+        reason: true,
+        peakMagnitudeMs2: true,
+      },
+      take: 1000,
+    }),
+  ]);
+
+  const firstDeviceByUser = new Map<string, (typeof devices)[number]>();
+  for (const d of devices) {
+    if (!firstDeviceByUser.has(d.ownerId)) firstDeviceByUser.set(d.ownerId, d);
+  }
+
+  const latestMotionByUser = new Map<string, (typeof motionAlerts)[number]>();
+  for (const m of motionAlerts) {
+    if (!latestMotionByUser.has(m.userId)) latestMotionByUser.set(m.userId, m);
+  }
 
   // Phone GPS pings for selected range
   const pings = await prisma.locationPing.findMany({
@@ -92,6 +131,8 @@ export async function GET(req: Request) {
     }
 
     const latest = userPings.length > 0 ? userPings[userPings.length - 1] : null;
+    const device = firstDeviceByUser.get(blindUserId) ?? null;
+    const motion = latestMotionByUser.get(blindUserId) ?? null;
     return {
       blindUserId,
       blindUserName: nameByUserId.get(blindUserId) ?? "Unknown",
@@ -110,6 +151,30 @@ export async function GET(req: Request) {
         longitude: p.longitude,
         triggeredAt: p.sentAt.toISOString(),
       })),
+      esp: device
+        ? {
+            serialNumber: device.serialNumber,
+            label: device.label,
+            lastDistanceCm: device.lastDistanceCm,
+            isOnline: device.isOnline,
+            batteryLevel: device.batteryLevel,
+            lastSeenAt: device.lastSeenAt?.toISOString() ?? null,
+          }
+        : null,
+      phone: {
+        realtimeSpeedMps:
+          device && typeof device.lastPhoneSpeedMps === "number" && Number.isFinite(device.lastPhoneSpeedMps)
+            ? device.lastPhoneSpeedMps
+            : null,
+        realtimeSpeedAt: device?.lastPhoneSpeedAt?.toISOString() ?? null,
+        lastGpsPingAt: latest?.sentAt.toISOString() ?? null,
+        lastImpactAt: motion?.triggeredAt?.toISOString() ?? null,
+        lastImpactReason: motion?.reason ?? null,
+        lastImpactPeakMs2:
+          motion && typeof motion.peakMagnitudeMs2 === "number" && Number.isFinite(motion.peakMagnitudeMs2)
+            ? motion.peakMagnitudeMs2
+            : null,
+      },
     };
   });
 

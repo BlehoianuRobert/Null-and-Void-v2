@@ -99,9 +99,9 @@ export default async function CaregiverNotificationsPage() {
       <div>
         <h1 className="text-xl font-semibold text-slate-100">Notifications</h1>
         <p className="mt-2 text-sm text-slate-400">
-          <span className="text-amber-200/90">Phone impact</span> events come from the patient&apos;s app
-          accelerometer (possible fall or sharp movement). <span className="text-sky-200/90">Hat distance</span>{" "}
-          alerts come from the ultrasonic sensor thresholds, not from the phone.
+          <span className="text-amber-200/90">Phone alerts</span> include impact/fall-like events from accelerometer
+          and speed-over-threshold events. <span className="text-sky-200/90">Hat distance</span> alerts come from the
+          ultrasonic sensor thresholds.
         </p>
       </div>
 
@@ -119,7 +119,7 @@ export default async function CaregiverNotificationsPage() {
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-xs font-semibold uppercase tracking-wide text-amber-200/90">
-                    Phone impact
+                    {item.reason === "SPEED_OVER_LIMIT" ? "Phone speed" : "Phone impact"}
                   </span>
                   <time className="text-xs text-slate-500" dateTime={item.sentAt.toISOString()}>
                     {item.sentAt.toLocaleString()}
@@ -128,11 +128,21 @@ export default async function CaregiverNotificationsPage() {
                 <p className="mt-2 text-sm text-slate-200">
                   <span className="font-medium text-slate-100">{item.userName}</span>
                   <span className="text-slate-500"> — </span>
-                  possible accident signal ({item.reason.replace(/_/g, " ").toLowerCase()}).
+                  {item.reason === "SPEED_OVER_LIMIT"
+                    ? "speed threshold exceeded."
+                    : `possible accident signal (${item.reason.replace(/_/g, " ").toLowerCase()}).`}
                 </p>
                 <p className="mt-1 font-mono text-xs text-slate-400">
-                  Peak ≈ {item.peakMagnitudeMs2.toFixed(1)} m/s² (includes gravity)
-                  {item.deltaMs2 != null ? ` · Δ ≈ ${item.deltaMs2.toFixed(1)} m/s²` : null}
+                  {item.reason === "SPEED_OVER_LIMIT" ? (
+                    <>
+                      Speed ≈ {item.peakMagnitudeMs2.toFixed(2)} m/s ({(item.peakMagnitudeMs2 * 3.6).toFixed(1)} km/h)
+                    </>
+                  ) : (
+                    <>
+                      Peak ≈ {item.peakMagnitudeMs2.toFixed(1)} m/s² (includes gravity)
+                      {item.deltaMs2 != null ? ` · Δ ≈ ${item.deltaMs2.toFixed(1)} m/s²` : null}
+                    </>
+                  )}
                 </p>
                 {item.latitude != null && item.longitude != null ? (
                   <a

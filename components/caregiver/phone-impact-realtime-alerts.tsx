@@ -16,6 +16,10 @@ type FeedItem = {
 const POLL_MS = 7000;
 const TOAST_MS = 12000;
 
+function isSpeedAlert(reason: string) {
+  return reason.toUpperCase() === "SPEED_OVER_LIMIT";
+}
+
 export function PhoneImpactRealtimeAlerts() {
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
@@ -63,8 +67,13 @@ export function PhoneImpactRealtimeAlerts() {
 
         if (canNotify) {
           for (const item of fresh) {
-            const n = new Notification(`Phone impact: ${item.blindUserName}`, {
-              body: `${item.reason.replace(/_/g, " ").toLowerCase()} · Peak ${item.peakMagnitudeMs2.toFixed(1)} m/s²`,
+            const speed = isSpeedAlert(item.reason);
+            const title = speed ? `Phone speed alert: ${item.blindUserName}` : `Phone impact: ${item.blindUserName}`;
+            const body = speed
+              ? `${(item.peakMagnitudeMs2 * 3.6).toFixed(1)} km/h over threshold`
+              : `${item.reason.replace(/_/g, " ").toLowerCase()} · Peak ${item.peakMagnitudeMs2.toFixed(1)} m/s²`;
+            const n = new Notification(title, {
+              body,
               tag: item.id,
             });
             n.onclick = () => {
@@ -131,11 +140,17 @@ export function PhoneImpactRealtimeAlerts() {
             key={t.id}
             className="pointer-events-auto rounded-lg border border-amber-800/40 bg-slate-950/95 p-3 text-xs shadow-xl"
           >
-            <div className="font-semibold text-amber-200">Phone impact detected</div>
+            <div className="font-semibold text-amber-200">
+              {isSpeedAlert(t.reason) ? "Phone speed threshold alert" : "Phone impact detected"}
+            </div>
             <div className="mt-1 text-slate-200">
               {t.blindUserName} · {t.reason.replace(/_/g, " ").toLowerCase()}
             </div>
-            <div className="mt-1 font-mono text-slate-400">Peak {t.peakMagnitudeMs2.toFixed(1)} m/s²</div>
+            <div className="mt-1 font-mono text-slate-400">
+              {isSpeedAlert(t.reason)
+                ? `Speed ${t.peakMagnitudeMs2.toFixed(2)} m/s (${(t.peakMagnitudeMs2 * 3.6).toFixed(1)} km/h)`
+                : `Peak ${t.peakMagnitudeMs2.toFixed(1)} m/s²`}
+            </div>
             <div className="mt-2 flex items-center gap-3">
               <Link href="/caregiver/notifications" className="text-amber-300 underline hover:text-amber-200">
                 Open notifications
