@@ -653,8 +653,8 @@ function TradeoffsSection() {
 const GALLERY_SLOTS = [
   { label: "Hardware Build", sub: "Prototype Photo", src: "/images/poza1.jpeg" },
   { label: "Hardware Build", sub: "Prototype Photo", src: "/images/poza2.jpeg" },
-  { label: "ESP32 Online", sub: "Live Device Connection", src: "/images/ESP_connection.png" },
-  { label: "Real-time Map", sub: "Caregiver GPS Tracking", src: "/images/map.png" },
+  { label: "ESP32 Online", sub: "Live Device Connection", src: "/images/ESP_connection.jpeg" },
+  { label: "Real-time Map", sub: "Caregiver GPS Tracking", src: "/images/map.jpeg" },
 ];
 
 function GallerySection() {
