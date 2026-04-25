@@ -9,7 +9,7 @@ type Snapshot = {
   isOnline: boolean;
   batteryLevel: number | null;
   lastPhoneSpeedMps?: number | null;
-  lastPhonePingAt?: string | null;
+  lastPhoneSpeedAt?: string | null;
 };
 
 type Props = {
@@ -30,7 +30,7 @@ export function EspDeviceTelemetryLive({ serialNumber, label, initial }: Props) 
     initial.isOnline,
     initial.batteryLevel,
     initial.lastPhoneSpeedMps,
-    initial.lastPhonePingAt,
+    initial.lastPhoneSpeedAt,
   ]);
 
   useEffect(() => {
@@ -69,9 +69,11 @@ export function EspDeviceTelemetryLive({ serialNumber, label, initial }: Props) 
           </dd>
         </div>
         <div>
-          <dt className="text-slate-500">Last phone impact peak</dt>
+          <dt className="text-slate-500">Last realtime phone speed</dt>
           <dd className="font-mono text-slate-200">
-            {data.lastAccelX != null ? `${Number(data.lastAccelX).toFixed(1)} m/s²` : "—"}
+            {data.lastPhoneSpeedMps != null
+              ? `${data.lastPhoneSpeedMps.toFixed(2)} m/s (${(data.lastPhoneSpeedMps * 3.6).toFixed(1)} km/h)`
+              : "—"}
           </dd>
         </div>
         <div>
@@ -79,12 +81,10 @@ export function EspDeviceTelemetryLive({ serialNumber, label, initial }: Props) 
           <dd>{data.lastSeenAt ? new Date(data.lastSeenAt).toLocaleString() : "—"}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Phone speed / ping</dt>
+          <dt className="text-slate-500">Last phone impact peak</dt>
           <dd>
-            {data.lastPhoneSpeedMps != null
-              ? `${data.lastPhoneSpeedMps.toFixed(2)} m/s (${(data.lastPhoneSpeedMps * 3.6).toFixed(1)} km/h)`
-              : "—"}
-            {data.lastPhonePingAt ? ` · ${new Date(data.lastPhonePingAt).toLocaleTimeString()}` : ""}
+            {data.lastAccelX != null ? `${Number(data.lastAccelX).toFixed(1)} m/s²` : "—"}
+            {data.lastPhoneSpeedAt ? ` · ${new Date(data.lastPhoneSpeedAt).toLocaleTimeString()}` : ""}
           </dd>
         </div>
         <div>

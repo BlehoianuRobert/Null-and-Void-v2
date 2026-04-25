@@ -49,6 +49,8 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
               batteryLevel: true,
               lastDistanceCm: true,
               lastAccelX: true,
+              lastPhoneSpeedMps: true,
+              lastPhoneSpeedAt: true,
             },
           },
         },
@@ -324,6 +326,8 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
                             lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
                             isOnline: d.isOnline,
                             batteryLevel: d.batteryLevel,
+                            lastPhoneSpeedMps: d.lastPhoneSpeedMps ?? null,
+                            lastPhoneSpeedAt: d.lastPhoneSpeedAt?.toISOString() ?? null,
                           }}
                         />
                       ))}

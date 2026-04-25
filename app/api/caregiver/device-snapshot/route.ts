@@ -57,6 +57,6 @@ export async function GET(req: Request) {
     isOnline: device.isOnline,
     batteryLevel: device.batteryLevel,
     lastPhoneSpeedMps: device.lastPhoneSpeedMps ?? null,
-    lastPhonePingAt: device.lastPhoneSpeedAt?.toISOString() ?? null,
+    lastPhoneSpeedAt: device.lastPhoneSpeedAt?.toISOString() ?? null,
   });
 }
