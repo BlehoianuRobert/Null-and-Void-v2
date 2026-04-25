@@ -40,14 +40,6 @@ export async function POST(req: Request) {
   const thresholdKmh = Number(process.env.PHONE_SPEED_ALERT_THRESHOLD_KMH ?? "4");
   const cooldownMs = Number(process.env.PHONE_SPEED_ALERT_COOLDOWN_MS ?? "180000");
 
-  await prisma.device.updateMany({
-    where: { ownerId: body.blindUserId },
-    data: {
-      lastPhoneSpeedMps: speedMps,
-      lastPhoneSpeedAt: sentAt,
-    },
-  });
-
   const shouldTriggerSpeedAlert =
     Number.isFinite(thresholdKmh) && thresholdKmh > 0 ? speedKmh >= thresholdKmh : speedKmh >= 4;
 

@@ -69,7 +69,7 @@ export function EspDeviceTelemetryLive({ serialNumber, label, initial }: Props) 
           </dd>
         </div>
         <div>
-          <dt className="text-slate-500">Last realtime phone speed</dt>
+          <dt className="text-slate-500">Last realtime speed (ESP)</dt>
           <dd className="font-mono text-slate-200">
             {data.lastPhoneSpeedMps != null
               ? `${data.lastPhoneSpeedMps.toFixed(2)} m/s (${(data.lastPhoneSpeedMps * 3.6).toFixed(1)} km/h)`
@@ -81,11 +81,8 @@ export function EspDeviceTelemetryLive({ serialNumber, label, initial }: Props) 
           <dd>{data.lastSeenAt ? new Date(data.lastSeenAt).toLocaleString() : "—"}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Last speed</dt>
-          <dd>
-            {data.lastAccelX != null ? `${Number(data.lastAccelX).toFixed(1)} m/s²` : "—"}
-            {data.lastPhoneSpeedAt ? ` · ${new Date(data.lastPhoneSpeedAt).toLocaleTimeString()}` : ""}
-          </dd>
+          <dt className="text-slate-500">Last phone impact peak</dt>
+          <dd>{data.lastAccelX != null ? `${Number(data.lastAccelX).toFixed(1)} m/s²` : "—"}</dd>
         </div>
         <div>
           <dt className="text-slate-500">Online / battery</dt>

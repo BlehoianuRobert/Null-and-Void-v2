@@ -44,16 +44,6 @@ export async function POST(req: Request) {
     },
   });
 
-  if (typeof body.speedMps === "number" && Number.isFinite(body.speedMps)) {
-    await prisma.device.updateMany({
-      where: { ownerId: body.blindUserId },
-      data: {
-        lastPhoneSpeedMps: Math.max(0, body.speedMps),
-        lastPhoneSpeedAt: sentAt,
-      },
-    });
-  }
-
   return NextResponse.json({ ok: true });
 }
 

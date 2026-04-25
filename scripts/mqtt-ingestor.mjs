@@ -66,11 +66,12 @@ function parseDistancePayload(payload) {
   }
 }
 
-async function postTelemetry({ distanceCm, serialNumber }) {
+async function postTelemetry({ distanceCm, serialNumber, speedMps }) {
   const url = `${APP_BASE_URL}/api/devices/${encodeURIComponent(serialNumber)}/telemetry`;
 
   const body = {
     distanceCm,
+    speedMps,
     firmwareVersion: "mqtt-bridge",
   };
 
@@ -88,6 +89,8 @@ async function postTelemetry({ distanceCm, serialNumber }) {
     throw new Error(`Telemetry POST failed ${res.status}: ${text}`);
   }
 }
+
+const lastDistanceByDevice = new Map();
 
 async function postPhoneMotion({
   blindUserId,
@@ -234,11 +237,32 @@ client.on("message", async (topic, payload) => {
       }
 
       try {
+        let speedMps;
+        const nowMs = Date.now();
+        const prev = lastDistanceByDevice.get(serial);
+        if (prev && Number.isFinite(prev.distanceCm) && Number.isFinite(prev.atMs)) {
+          const dt = (nowMs - prev.atMs) / 1000;
+          if (dt > 0.05) {
+            const dMeters = Math.abs(parsed.distanceCm - prev.distanceCm) / 100;
+            const s = dMeters / dt;
+            if (Number.isFinite(s) && s >= 0 && s <= 10) speedMps = s;
+          }
+        }
+        lastDistanceByDevice.set(serial, { distanceCm: parsed.distanceCm, atMs: nowMs });
+
         await postTelemetry({
           distanceCm: parsed.distanceCm,
           serialNumber: serial,
+          speedMps,
         });
-        console.log("Forwarded distance", parsed.distanceCm, "cm → device", serial);
+        console.log(
+          "Forwarded distance",
+          parsed.distanceCm,
+          "cm → device",
+          serial,
+          "speedMps",
+          speedMps ?? "(n/a)"
+        );
       } catch (e) {
         console.error("Distance MQTT: POST failed for device", serial, "payload:", rawPreview, e);
       }

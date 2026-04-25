@@ -109,6 +109,7 @@ export async function GET(req: Request) {
       sentAt: true,
       latitude: true,
       longitude: true,
+      speedMps: true,
     },
   });
 
@@ -163,10 +164,8 @@ export async function GET(req: Request) {
         : null,
       phone: {
         realtimeSpeedMps:
-          device && typeof device.lastPhoneSpeedMps === "number" && Number.isFinite(device.lastPhoneSpeedMps)
-            ? device.lastPhoneSpeedMps
-            : null,
-        realtimeSpeedAt: device?.lastPhoneSpeedAt?.toISOString() ?? null,
+          latest && typeof latest.speedMps === "number" && Number.isFinite(latest.speedMps) ? latest.speedMps : null,
+        realtimeSpeedAt: latest?.sentAt?.toISOString() ?? null,
         lastGpsPingAt: latest?.sentAt.toISOString() ?? null,
         lastImpactAt: motion?.triggeredAt?.toISOString() ?? null,
         lastImpactReason: motion?.reason ?? null,

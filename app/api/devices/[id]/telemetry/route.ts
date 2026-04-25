@@ -58,6 +58,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   const distanceCm = Math.max(0, Math.floor(distanceCmRaw));
   const accelParsed = asFiniteNumber(body.accelX);
   const lastAccelX = accelParsed !== undefined ? accelParsed : undefined;
+  const speedParsed = asFiniteNumber(body.speedMps);
 
   await prisma.device.update({
     where: { id: device.id },
@@ -66,6 +67,12 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       lastSeenAt: now,
       lastDistanceCm: distanceCm,
       ...(lastAccelX !== undefined ? { lastAccelX } : {}),
+      ...(speedParsed !== undefined
+        ? {
+            lastPhoneSpeedMps: Math.max(0, speedParsed),
+            lastPhoneSpeedAt: now,
+          }
+        : {}),
       batteryLevel: (() => {
         const b = asFiniteNumber(body.batteryLevel);
         return b !== undefined ? Math.round(Math.max(0, Math.min(100, b))) : undefined;
