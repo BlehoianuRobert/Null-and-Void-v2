@@ -46,6 +46,12 @@ export async function GET(req: Request) {
 
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const latestPhonePing = await prisma.locationPing.findFirst({
+    where: { userId: device.ownerId },
+    orderBy: { sentAt: "desc" },
+    select: { sentAt: true, speedMps: true },
+  });
+
   return NextResponse.json({
     serialNumber: device.serialNumber,
     label: device.label,
@@ -54,5 +60,10 @@ export async function GET(req: Request) {
     lastSeenAt: device.lastSeenAt?.toISOString() ?? null,
     isOnline: device.isOnline,
     batteryLevel: device.batteryLevel,
+    lastPhoneSpeedMps:
+      typeof latestPhonePing?.speedMps === "number" && Number.isFinite(latestPhonePing.speedMps)
+        ? latestPhonePing.speedMps
+        : null,
+    lastPhonePingAt: latestPhonePing?.sentAt?.toISOString() ?? null,
   });
 }

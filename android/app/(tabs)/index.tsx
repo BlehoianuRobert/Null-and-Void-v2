@@ -30,6 +30,7 @@ const ENV_BLIND_USER_ID = (process.env.EXPO_PUBLIC_BLIND_USER_ID ?? '').trim();
 
 const MOTION_COOLDOWN_MS = 90_000;
 const SUPPRESS_AFTER_OK_MS = 10 * 60 * 1000;
+const LOCATION_SEND_INTERVAL_MS = 120_000;
 
 function normalizeApiBaseInput(raw: string): string {
   let s = raw.trim();
@@ -272,8 +273,9 @@ export default function TrackScreen() {
     subRef.current = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.Balanced,
-        timeInterval: 15_000,
-        distanceInterval: 5,
+        // Send roughly every 2 minutes while tracking (also sends once immediately on Start).
+        timeInterval: LOCATION_SEND_INTERVAL_MS,
+        distanceInterval: 0,
       },
       async (loc) => {
         lastGeoRef.current = {

@@ -8,6 +8,8 @@ type Snapshot = {
   lastSeenAt: string | null;
   isOnline: boolean;
   batteryLevel: number | null;
+  lastPhoneSpeedMps?: number | null;
+  lastPhonePingAt?: string | null;
 };
 
 type Props = {
@@ -21,7 +23,15 @@ export function EspDeviceTelemetryLive({ serialNumber, label, initial }: Props) 
 
   useEffect(() => {
     setData(initial);
-  }, [initial.lastSeenAt, initial.lastDistanceCm, initial.lastAccelX, initial.isOnline, initial.batteryLevel]);
+  }, [
+    initial.lastSeenAt,
+    initial.lastDistanceCm,
+    initial.lastAccelX,
+    initial.isOnline,
+    initial.batteryLevel,
+    initial.lastPhoneSpeedMps,
+    initial.lastPhonePingAt,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,12 +69,23 @@ export function EspDeviceTelemetryLive({ serialNumber, label, initial }: Props) 
           </dd>
         </div>
         <div>
-          <dt className="text-slate-500">Last accel X (phone)</dt>
-          <dd className="font-mono text-slate-200">{data.lastAccelX != null ? String(data.lastAccelX) : "—"}</dd>
+          <dt className="text-slate-500">Last phone impact peak</dt>
+          <dd className="font-mono text-slate-200">
+            {data.lastAccelX != null ? `${Number(data.lastAccelX).toFixed(1)} m/s²` : "—"}
+          </dd>
         </div>
         <div>
           <dt className="text-slate-500">Last seen</dt>
           <dd>{data.lastSeenAt ? new Date(data.lastSeenAt).toLocaleString() : "—"}</dd>
+        </div>
+        <div>
+          <dt className="text-slate-500">Phone speed / ping</dt>
+          <dd>
+            {data.lastPhoneSpeedMps != null
+              ? `${data.lastPhoneSpeedMps.toFixed(2)} m/s (${(data.lastPhoneSpeedMps * 3.6).toFixed(1)} km/h)`
+              : "—"}
+            {data.lastPhonePingAt ? ` · ${new Date(data.lastPhonePingAt).toLocaleTimeString()}` : ""}
+          </dd>
         </div>
         <div>
           <dt className="text-slate-500">Online / battery</dt>
