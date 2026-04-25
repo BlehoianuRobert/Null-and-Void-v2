@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Fragment } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MapContainer, Marker, Polyline, Popup, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from "react-leaflet";
 
 type TrackingUser = {
   blindUserId: string;
@@ -59,6 +59,7 @@ export function TrackingMap() {
   const [error, setError] = useState<string | null>(null);
   const [windowMode, setWindowMode] = useState<"1d" | "2d" | "1w" | "day">("1d");
   const [dayValue, setDayValue] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [autoCenter, setAutoCenter] = useState(true);
   const [nowTick, setNowTick] = useState(() => Date.now());
 
   const loadPoints = useCallback(async () => {
@@ -121,6 +122,16 @@ export function TrackingMap() {
           Per-user totals are computed from phone GPS pings. Refreshes every {POLL_MS / 1000}s.
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            onClick={() => setAutoCenter((v) => !v)}
+            className={`rounded border px-2 py-1 text-[11px] ${
+              autoCenter
+                ? "border-[#1D9E75] bg-[#1D9E75]/20 text-emerald-200"
+                : "border-slate-700 bg-slate-900 text-slate-300"
+            }`}
+          >
+            {autoCenter ? "Auto-center: ON" : "Auto-center: OFF"}
+          </button>
           {(["1d", "2d", "1w", "day"] as const).map((w) => (
             <button
               key={w}
@@ -172,6 +183,7 @@ export function TrackingMap() {
       </div>
 
       <MapContainer center={center} zoom={13} className="h-full w-full">
+        <AutoFocusOnUsers users={users} enabled={autoCenter} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -211,4 +223,27 @@ export function TrackingMap() {
       </MapContainer>
     </div>
   );
+}
+
+function AutoFocusOnUsers({ users, enabled }: { users: TrackingUser[]; enabled: boolean }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!enabled) return;
+    const points = users
+      .map((u) => u.latestPoint)
+      .filter((p): p is NonNullable<TrackingUser["latestPoint"]> => p != null);
+    if (points.length === 0) return;
+
+    if (points.length === 1) {
+      const p = points[0];
+      map.flyTo([p.latitude, p.longitude], Math.max(map.getZoom(), 15), { duration: 0.8 });
+      return;
+    }
+
+    const bounds = L.latLngBounds(points.map((p) => [p.latitude, p.longitude] as [number, number]));
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15, animate: true });
+  }, [users, enabled, map]);
+
+  return null;
 }

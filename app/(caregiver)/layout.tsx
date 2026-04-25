@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { requireRole } from "@/lib/permissions";
 import { AppShell } from "@/components/shared/app-shell";
 import { SignOutButton } from "@/components/shared/sign-out-button";
+import { PhoneImpactRealtimeAlerts } from "@/components/caregiver/phone-impact-realtime-alerts";
 
 export default async function CaregiverLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
@@ -21,6 +22,7 @@ export default async function CaregiverLayout({ children }: { children: React.Re
       ]}
       topRight={<SignOutButton />}
     >
+      <PhoneImpactRealtimeAlerts />
       {children}
     </AppShell>
   );
