@@ -35,8 +35,13 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
 
   const distanceCmRaw = asFiniteNumber(body?.distanceCm);
-  if (!body || distanceCmRaw === undefined) {
-    return NextResponse.json({ error: "Invalid body: distanceCm must be a number" }, { status: 400 });
+  const tempCRaw = asFiniteNumber(body?.tempC);
+  const pressureHpaRaw = asFiniteNumber(body?.pressureHpa);
+  if (!body || (distanceCmRaw === undefined && tempCRaw === undefined && pressureHpaRaw === undefined)) {
+    return NextResponse.json(
+      { error: "Invalid body: provide at least distanceCm or tempC or pressureHpa" },
+      { status: 400 }
+    );
   }
 
   const device = await prisma.device.findFirst({
@@ -55,7 +60,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   if (!device) return NextResponse.json({ error: "Device not registered" }, { status: 404 });
 
   const now = new Date();
-  const distanceCm = Math.max(0, Math.floor(distanceCmRaw));
+  const distanceCm = distanceCmRaw !== undefined ? Math.max(0, Math.floor(distanceCmRaw)) : undefined;
   const accelParsed = asFiniteNumber(body.accelX);
   const lastAccelX = accelParsed !== undefined ? accelParsed : undefined;
   const speedParsed = asFiniteNumber(body.speedMps);
@@ -65,8 +70,10 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     data: {
       isOnline: true,
       lastSeenAt: now,
-      lastDistanceCm: distanceCm,
+      ...(distanceCm !== undefined ? { lastDistanceCm: distanceCm } : {}),
       ...(lastAccelX !== undefined ? { lastAccelX } : {}),
+      ...(tempCRaw !== undefined ? { lastTempC: tempCRaw, lastEnvAt: now } : {}),
+      ...(pressureHpaRaw !== undefined ? { lastPressureHpa: pressureHpaRaw, lastEnvAt: now } : {}),
       ...(speedParsed !== undefined
         ? {
             lastPhoneSpeedMps: Math.max(0, speedParsed),
@@ -80,6 +87,10 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       firmwareVersion: typeof body.firmwareVersion === "string" ? body.firmwareVersion : undefined,
     },
   });
+
+  if (distanceCm === undefined) {
+    return NextResponse.json({ ok: true, triggered: false, envOnly: true });
+  }
 
   let severity: "CRITICAL" | "NEAR" | "MEDIUM" | null = null;
   if (distanceCm <= device.thresholdCritical) severity = "CRITICAL";

@@ -320,7 +320,7 @@ function StatsBar() {
   const stats = [
     { value: "50 cm", label: "Critical Alert Zone" },
     { value: "MQTT", label: "Hat → Mosquitto → API" },
-    { value: "MAC", label: "Device id = ESP Wi‑Fi MAC" },
+    { value: "MAC", label: "Device id = ESP32 MAC" },
     { value: "GPS + IMU", label: "Phone Track app" },
   ];
   return (
@@ -362,7 +362,7 @@ const FEATURES = [
   },
   {
     title: "MAC = device identity",
-    desc: "In My users, caregivers register each hat with the ESP32 Wi‑Fi MAC as the device serial. The platform stores distance, last seen, and battery under that device — tied to the right blind user automatically.",
+    desc: "In My users, caregivers register each hat with the ESP32 MAC as the device serial. The platform stores distance, last seen, and battery under that device — tied to the right blind user automatically.",
     color: "#0ea5e9",
     iconBg: "rgba(14,165,233,0.12)",
     iconBorder: "rgba(14,165,233,0.3)",
@@ -479,7 +479,7 @@ function PlatformSection() {
   const bullets = [
     {
       title: "Patients & hats",
-      body: "Caregivers add blind users under My users and register each ESP32 hat using its Wi‑Fi MAC. That MAC is the device serial in PostgreSQL — so every distance sample and “last seen” belongs to the correct person.",
+      body: "Caregivers add blind users under My users and register each ESP32 hat using its MAC. That MAC is the device serial in PostgreSQL — so every distance sample and “last seen” belongs to the correct person.",
     },
     {
       title: "Same network, simple routing",

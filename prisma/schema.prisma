@@ -77,6 +77,9 @@ model Device {
   batteryLevel     Int?
   lastDistanceCm   Int?
   lastAccelX       Float?
+  lastTempC        Float?
+  lastPressureHpa  Float?
+  lastEnvAt        DateTime?
   lastPhoneSpeedMps Float?
   lastPhoneSpeedAt  DateTime?
   isOnline         Boolean  @default(false)
@@ -94,6 +97,7 @@ model Device {
   @@index([ownerId])
   @@index([isOnline])
   @@index([lastSeenAt])
+  @@index([lastEnvAt])
   @@index([lastPhoneSpeedAt])
 }
 

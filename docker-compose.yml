@@ -73,6 +73,7 @@ services:
     environment:
       MQTT_URL: mqtt://mqtt-broker:1883
       MQTT_TOPIC_DISTANCE: senzor/distanta
+      MQTT_TOPIC_BMP280: senzor/bmp280
       MQTT_TOPIC_ACCEL: senzor/acceleratie
       MQTT_TOPIC_PHONE_LOCATION: phone/location
       MQTT_TOPIC_PHONE_MOTION: phone/motion

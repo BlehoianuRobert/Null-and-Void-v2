@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { requireRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { DashboardAutoRefresh } from "@/components/caregiver/dashboard-auto-refresh";
 
 export default async function CaregiverDashboardPage() {
   const session = await getServerSession(authOptions);
@@ -30,6 +31,9 @@ export default async function CaregiverDashboardPage() {
             lastSeenAt: true,
             isOnline: true,
             batteryLevel: true,
+            lastTempC: true,
+            lastPressureHpa: true,
+            lastEnvAt: true,
           },
         })
       : [];
@@ -81,10 +85,15 @@ export default async function CaregiverDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <DashboardAutoRefresh intervalMs={4000} />
       <div>
         <h1 className="text-2xl font-semibold">Caregiver dashboard</h1>
         <p className="mt-2 text-sm text-slate-400">
           Signed in as <span className="text-slate-200">{session!.user.email}</span>
+        </p>
+        <p className="mt-2 text-xs text-slate-500">
+          Abbreviations: ESP (hat microcontroller), env (environment), temp (temperature), hPa (hectopascal), GPS
+          (Global Positioning System), m/s (meters per second), km/h (kilometers per hour), cm (centimeters).
         </p>
       </div>
 
@@ -143,9 +152,10 @@ export default async function CaregiverDashboardPage() {
             <thead className="text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="py-2 pr-3">Name</th>
-                <th className="py-2 pr-3">ESP last distance</th>
+                <th className="py-2 pr-3">ESP last distance (cm)</th>
+                <th className="py-2 pr-3">ESP env (temp °C / pressure hPa)</th>
                 <th className="py-2 pr-3">ESP last seen</th>
-                <th className="py-2 pr-3">Last phone ping</th>
+                <th className="py-2 pr-3">Last phone ping (GPS)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-900">
@@ -169,6 +179,17 @@ export default async function CaregiverDashboardPage() {
                           d.lastSeenAt ? `${d.label}: ${d.lastSeenAt.toLocaleString()}` : `${d.label}: —`
                         )
                         .join("; ");
+                const envSummary =
+                  devs.length === 0
+                    ? "—"
+                    : devs
+                        .map((d) => {
+                          const t = d.lastTempC != null ? `${d.lastTempC.toFixed(1)}°C` : "—";
+                          const p = d.lastPressureHpa != null ? `${d.lastPressureHpa.toFixed(1)} hPa` : "—";
+                          const at = d.lastEnvAt ? d.lastEnvAt.toLocaleTimeString() : "—";
+                          return `${d.label}: ${t} / ${p} (${at})`;
+                        })
+                        .join("; ");
 
                 return (
                   <tr key={r.blindUserId} className="text-slate-200">
@@ -179,6 +200,7 @@ export default async function CaregiverDashboardPage() {
                     >
                       {distSummary}
                     </td>
+                    <td className="max-w-[260px] py-2 pr-3 text-xs text-slate-400">{envSummary}</td>
                     <td className="max-w-[220px] py-2 pr-3 text-xs text-slate-400">{seenSummary}</td>
                     <td className="py-2 pr-3 text-slate-400">
                       {lastPingAt.get(r.blindUserId)?.toLocaleString() ?? "—"}
@@ -188,7 +210,7 @@ export default async function CaregiverDashboardPage() {
               })}
               {relationships.length === 0 ? (
                 <tr>
-                  <td className="py-6 text-slate-400" colSpan={4}>
+                  <td className="py-6 text-slate-400" colSpan={5}>
                     No patients assigned yet.
                   </td>
                 </tr>

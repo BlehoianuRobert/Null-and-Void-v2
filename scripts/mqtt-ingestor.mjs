@@ -2,6 +2,7 @@ import mqtt from "mqtt";
 
 const MQTT_URL = process.env.MQTT_URL || "mqtt://mqtt-broker:1883";
 const MQTT_TOPIC_DISTANCE = process.env.MQTT_TOPIC_DISTANCE || "senzor/distanta";
+const MQTT_TOPIC_BMP280 = process.env.MQTT_TOPIC_BMP280 || "senzor/bmp280";
 const MQTT_TOPIC_PHONE_LOCATION = process.env.MQTT_TOPIC_PHONE_LOCATION || "phone/location";
 const MQTT_TOPIC_PHONE_MOTION = process.env.MQTT_TOPIC_PHONE_MOTION || "phone/motion";
 
@@ -66,12 +67,36 @@ function parseDistancePayload(payload) {
   }
 }
 
-async function postTelemetry({ distanceCm, serialNumber, speedMps }) {
+/** @returns {{ serial: string | null, tempC: number | null, pressureHpa: number | null } | null} */
+function parseBmpPayload(payload) {
+  const raw = payload.toString("utf8").trim();
+  if (!raw) return null;
+  try {
+    const j = JSON.parse(raw);
+    if (!j || typeof j !== "object") return null;
+    const rawMac = String(j.deviceMac ?? j.mac ?? j.serial ?? j.serialNumber ?? "").trim();
+    const serial = rawMac ? normalizeDeviceSerial(rawMac) : null;
+    let t = j.tempC ?? j.temperatureC ?? j.temperature ?? null;
+    let p = j.pressureHpa ?? j.pressure ?? j.hpa ?? null;
+    if (typeof t === "string") t = Number(String(t).replace(",", "."));
+    if (typeof p === "string") p = Number(String(p).replace(",", "."));
+    const tempC = Number.isFinite(t) ? t : null;
+    const pressureHpa = Number.isFinite(p) ? p : null;
+    if (!serial || (tempC == null && pressureHpa == null)) return null;
+    return { serial, tempC, pressureHpa };
+  } catch {
+    return null;
+  }
+}
+
+async function postTelemetry({ distanceCm, serialNumber, speedMps, tempC, pressureHpa }) {
   const url = `${APP_BASE_URL}/api/devices/${encodeURIComponent(serialNumber)}/telemetry`;
 
   const body = {
     distanceCm,
     speedMps,
+    tempC,
+    pressureHpa,
     firmwareVersion: "mqtt-bridge",
   };
 
@@ -149,6 +174,7 @@ console.log("MQTT_URL:", MQTT_URL);
 console.log(
   "Topics:",
   MQTT_TOPIC_DISTANCE,
+  MQTT_TOPIC_BMP280,
   MQTT_TOPIC_PHONE_LOCATION,
   MQTT_TOPIC_PHONE_MOTION
 );
@@ -163,7 +189,7 @@ const client = mqtt.connect(MQTT_URL, {
 
 client.on("connect", () => {
   console.log("MQTT connected");
-  client.subscribe([MQTT_TOPIC_DISTANCE, MQTT_TOPIC_PHONE_LOCATION, MQTT_TOPIC_PHONE_MOTION], (err) => {
+  client.subscribe([MQTT_TOPIC_DISTANCE, MQTT_TOPIC_BMP280, MQTT_TOPIC_PHONE_LOCATION, MQTT_TOPIC_PHONE_MOTION], (err) => {
     if (err) console.error("MQTT subscribe error", err);
     else console.log("MQTT subscribed");
   });
@@ -266,6 +292,35 @@ client.on("message", async (topic, payload) => {
       } catch (e) {
         console.error("Distance MQTT: POST failed for device", serial, "payload:", rawPreview, e);
       }
+    }
+
+    if (topic === MQTT_TOPIC_BMP280) {
+      const rawPreview = payload.toString("utf8").trim().slice(0, 200);
+      const parsed = parseBmpPayload(payload);
+      if (!parsed) {
+        console.warn("BMP280 MQTT: could not parse payload:", rawPreview);
+        return;
+      }
+
+      try {
+        await postTelemetry({
+          serialNumber: parsed.serial,
+          tempC: parsed.tempC ?? undefined,
+          pressureHpa: parsed.pressureHpa ?? undefined,
+        });
+        console.log(
+          "Forwarded BMP280",
+          "device",
+          parsed.serial,
+          "tempC",
+          parsed.tempC ?? "(n/a)",
+          "pressureHpa",
+          parsed.pressureHpa ?? "(n/a)"
+        );
+      } catch (e) {
+        console.error("BMP280 MQTT: POST failed for device", parsed.serial, "payload:", rawPreview, e);
+      }
+      return;
     }
   } catch (e) {
     console.error("INGEST_ERROR", e);

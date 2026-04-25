@@ -8,7 +8,7 @@ import { addPatientAction, registerDeviceForPatientAction, removePatientAction }
 const errorMessages: Record<string, string> = {
   "add-patient": "Could not add patient. Check the name (at least 2 characters) and try again.",
   "register-device":
-    "Could not register the device. Enter the ESP32 Wi‑Fi MAC in the MAC field. Label is optional (defaults to “Hat device”).",
+    "Could not register the device. Enter the ESP32 MAC in the MAC field. Label is optional (defaults to “Hat device”).",
   "remove-patient": "Could not remove this patient. Try again.",
 };
 
@@ -70,7 +70,7 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
         </div>
       ) : null}
       <p className="mt-2 text-sm text-slate-400">
-        Add a patient (blind user profile). You can also add the ESP32 Wi‑Fi MAC now, or register it later. Hat
+        Add a patient (blind user profile). You can also add the ESP32 MAC now, or register it later. Hat
         telemetry reaches the web app when the MQTT worker can resolve the device: either set{" "}
         <span className="font-mono text-slate-300">DEVICE_SERIAL</span> to that MAC for plain number payloads, or have
         the ESP publish <span className="font-mono text-slate-300">JSON</span> with the same MAC (see below) — then no{" "}
@@ -184,7 +184,7 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-slate-200" htmlFor="deviceMac">
-                  ESP32 Wi‑Fi MAC (optional)
+                  ESP32 MAC (optional)
                 </label>
                 <input
                   id="deviceMac"
@@ -270,7 +270,7 @@ export default async function CaregiverMyUsersPage({ searchParams }: PageProps) 
 
                 <div className="mt-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Register device (use ESP32 WiFi MAC as serial)
+                    Register device (use ESP32 MAC as serial)
                   </div>
                   <form
                     action={async (formData) => {
