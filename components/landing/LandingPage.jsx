@@ -653,10 +653,8 @@ function TradeoffsSection() {
 const GALLERY_SLOTS = [
   { label: "Hardware Build", sub: "Prototype Photo", src: "/images/poza1.jpeg" },
   { label: "Hardware Build", sub: "Prototype Photo", src: "/images/poza2.jpeg" },
-  { label: "MPU6050 Module", sub: "6-Axis IMU", src: null },
-  { label: "Hat Assembly", sub: "Complete Hardware", src: null },
-  { label: "Live Dashboard", sub: "Caregiver Interface", src: null },
-  { label: "Full System", sub: "IoT Architecture", src: null },
+  { label: "ESP32 Online", sub: "Live Device Connection", src: "/images/ESP_connection.png" },
+  { label: "Real-time Map", sub: "Caregiver GPS Tracking", src: "/images/map.png" },
 ];
 
 function GallerySection() {
@@ -1041,32 +1039,84 @@ function TechStackSection() {
 
 function SourcesSection() {
   const softwareSources = [
-    "Next.js Documentation — web app, App Router, API routes",
-    "React Documentation — frontend components and state management",
-    "NextAuth.js Documentation — authentication and session handling",
-    "Prisma Documentation — ORM, schema modeling, migrations",
-    "PostgreSQL Documentation — relational database",
-    "Docker Documentation — containerized deployment",
-    "Docker Compose Documentation — multi-service orchestration",
-    "MQTT Essentials / Eclipse Mosquitto Docs — message broker and pub/sub transport",
-    "Expo Documentation — Android app build/runtime",
-    "React Native Documentation — mobile app framework",
-    "Expo Location — GPS and location tracking",
-    "Expo Sensors (Accelerometer) — phone motion/impact detection",
-    "Leaflet Documentation + React Leaflet — caregiver live map",
+    { label: "Next.js Documentation", href: "https://nextjs.org/docs", desc: "web app, App Router, API routes" },
+    { label: "React Documentation", href: "https://react.dev/", desc: "frontend components and state management" },
+    { label: "NextAuth.js Documentation", href: "https://next-auth.js.org/", desc: "authentication and session handling" },
+    { label: "Prisma Documentation", href: "https://www.prisma.io/docs", desc: "ORM, schema modeling, migrations" },
+    { label: "PostgreSQL Documentation", href: "https://www.postgresql.org/docs/", desc: "relational database" },
+    { label: "Docker Documentation", href: "https://docs.docker.com/", desc: "containerized deployment" },
+    {
+      label: "Docker Compose Documentation",
+      href: "https://docs.docker.com/compose/",
+      desc: "multi-service orchestration",
+    },
+    {
+      label: "Eclipse Mosquitto Documentation",
+      href: "https://mosquitto.org/documentation/",
+      desc: "message broker and pub/sub transport",
+    },
+    { label: "Expo Documentation", href: "https://docs.expo.dev/", desc: "Android app build/runtime" },
+    {
+      label: "React Native Documentation",
+      href: "https://reactnative.dev/docs/getting-started",
+      desc: "mobile app framework",
+    },
+    {
+      label: "Expo Location",
+      href: "https://docs.expo.dev/versions/latest/sdk/location/",
+      desc: "GPS and location tracking",
+    },
+    {
+      label: "Expo Sensors (Accelerometer)",
+      href: "https://docs.expo.dev/versions/latest/sdk/accelerometer/",
+      desc: "phone motion/impact detection",
+    },
+    {
+      label: "Leaflet Documentation + React Leaflet",
+      href: "https://react-leaflet.js.org/",
+      desc: "caregiver live map",
+    },
   ];
 
   const hardwareSources = [
-    "ESP32-C6 Documentation (Espressif) — microcontroller platform",
-    "Arduino-ESP32 Core — ESP32 Arduino firmware support",
-    "PubSubClient (MQTT for Arduino) — MQTT client on ESP32",
-    "Adafruit MPU6050 Library Docs — motion sensor integration",
+    {
+      label: "ESP32-C6 Documentation (Espressif)",
+      href: "https://docs.espressif.com/projects/esp-idf/en/latest/esp32c6/",
+      desc: "microcontroller platform",
+    },
+    {
+      label: "Arduino-ESP32 Core",
+      href: "https://docs.espressif.com/projects/arduino-esp32/en/latest/",
+      desc: "ESP32 Arduino firmware support",
+    },
+    {
+      label: "PubSubClient (MQTT for Arduino)",
+      href: "https://pubsubclient.knolleary.net/",
+      desc: "MQTT client on ESP32",
+    },
+    {
+      label: "Adafruit MPU6050 Library Docs",
+      href: "https://github.com/adafruit/Adafruit_MPU6050",
+      desc: "motion sensor integration",
+    },
   ];
 
   const aiSources = [
-    "OpenAI GPT (ChatGPT / Codex) — code generation help, debugging guidance, architecture suggestions, documentation drafting.",
-    "Google Gemini — alternative implementation ideas, code review feedback, explanation of tooling/workflows.",
-    "Anthropic Claude — reasoning support for refactoring decisions, error analysis, and technical writing improvements.",
+    {
+      label: "OpenAI GPT (ChatGPT / Codex)",
+      href: "https://openai.com/chatgpt",
+      desc: "code generation help, debugging guidance, architecture suggestions, documentation drafting.",
+    },
+    {
+      label: "Google Gemini",
+      href: "https://gemini.google.com/",
+      desc: "alternative implementation ideas, code review feedback, explanation of tooling/workflows.",
+    },
+    {
+      label: "Anthropic Claude",
+      href: "https://claude.ai/",
+      desc: "reasoning support for refactoring decisions, error analysis, and technical writing improvements.",
+    },
   ];
 
   return (
@@ -1110,7 +1160,12 @@ function SourceCard({ title, items }) {
         {items.map((item, i) => (
           <li key={i} className="text-sm text-slate-400 leading-relaxed flex gap-2">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1D9E75]" />
-            <span>{item}</span>
+            <span>
+              <a href={item.href} target="_blank" rel="noreferrer" className="text-slate-200 underline hover:text-white">
+                {item.label}
+              </a>{" "}
+              — {item.desc}
+            </span>
           </li>
         ))}
       </ul>
