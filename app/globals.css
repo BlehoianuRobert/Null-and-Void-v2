@@ -63,6 +63,11 @@ body {
   to { transform: rotate(360deg); }
 }
 
+@keyframes progress-fill {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
 /* ===== SCROLL REVEAL ===== */
 .animate-on-scroll {
   opacity: 0;

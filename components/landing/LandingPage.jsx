@@ -659,14 +659,38 @@ const GALLERY_SLOTS = [
 ];
 
 function GallerySection() {
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [progressKey, setProgressKey] = useState(0);
+  const INTERVAL = 4500;
+
+  useEffect(() => {
+    if (paused) return;
+    const id = setInterval(() => {
+      setActive((a) => (a + 1) % GALLERY_SLOTS.length);
+      setProgressKey((k) => k + 1);
+    }, INTERVAL);
+    return () => clearInterval(id);
+  }, [paused]);
+
+  function goTo(i) {
+    setActive(i);
+    setProgressKey((k) => k + 1);
+  }
+  function prev() { goTo((active - 1 + GALLERY_SLOTS.length) % GALLERY_SLOTS.length); }
+  function next() { goTo((active + 1) % GALLERY_SLOTS.length); }
+
+  const slot = GALLERY_SLOTS[active];
+
   return (
     <section
       id="gallery"
       className="py-24 px-6"
       style={{ borderTop: "1px solid rgba(51,65,85,0.4)" }}
     >
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16 animate-on-scroll">
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-12 animate-on-scroll">
           <div
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-slate-400 text-xs font-semibold tracking-wide mb-4"
             style={{ border: "1px solid rgba(51,65,85,0.7)", background: "rgba(30,41,59,0.5)" }}
@@ -679,40 +703,115 @@ function GallerySection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {GALLERY_SLOTS.map((slot, i) => (
-            <div
-              key={i}
-              className="animate-on-scroll group relative rounded-2xl overflow-hidden aspect-video flex flex-col items-center justify-center transition-all duration-300 cursor-default"
-              style={{
-                background: "rgba(13,20,36,0.9)",
-                border: "1px solid rgba(51,65,85,0.5)",
-                transitionDelay: `${i * 70}ms`,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.border = "1px solid rgba(29,158,117,0.4)")}
-              onMouseLeave={(e) => (e.currentTarget.style.border = "1px solid rgba(51,65,85,0.5)")}
-            >
-              {slot.src ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={slot.src} alt={slot.label} className="absolute inset-0 w-full h-full object-cover" />
-              ) : (
-                <>
+        {/* Carousel */}
+        <div
+          className="animate-on-scroll relative rounded-2xl overflow-hidden"
+          style={{ border: "1px solid rgba(51,65,85,0.5)" }}
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+        >
+          {/* Slides — crossfade */}
+          <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+            {GALLERY_SLOTS.map((s, i) => (
+              <div
+                key={i}
+                className="absolute inset-0 transition-opacity duration-700"
+                style={{ opacity: i === active ? 1 : 0, zIndex: i === active ? 1 : 0 }}
+              >
+                {s.src ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.src} alt={s.label} className="w-full h-full object-cover" />
+                ) : (
                   <div
-                    className="absolute inset-0 transition-all duration-300"
-                    style={{ background: "linear-gradient(135deg, rgba(30,41,59,0.5), rgba(15,23,42,0.8))" }}
-                  />
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-slate-700 mb-2 relative z-10 group-hover:text-[#1D9E75]/50 transition-colors duration-300">
-                    <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.5" />
-                    <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <div className="relative z-10 text-center px-4">
-                    <div className="text-sm font-semibold text-slate-400 group-hover:text-white transition-colors duration-300">{slot.label}</div>
-                    <div className="text-xs text-slate-600 mt-0.5">{slot.sub}</div>
+                    className="w-full h-full flex flex-col items-center justify-center"
+                    style={{
+                      background:
+                        "radial-gradient(ellipse at 50% 40%, rgba(29,158,117,0.08) 0%, rgba(13,20,36,0.98) 70%)",
+                      backgroundImage:
+                        "linear-gradient(rgba(29,158,117,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(29,158,117,0.05) 1px, transparent 1px)",
+                      backgroundSize: "auto, 32px 32px, 32px 32px",
+                    }}
+                  >
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="text-slate-700 mb-3">
+                      <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.5" />
+                      <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" strokeWidth="1.5" />
+                      <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <span className="text-slate-500 text-sm font-medium">{s.label}</span>
+                    <span className="text-slate-700 text-xs mt-1">Image coming soon</span>
                   </div>
-                </>
-              )}
+                )}
+              </div>
+            ))}
+
+            {/* Caption overlay */}
+            <div
+              className="absolute bottom-0 left-0 right-0 z-10 px-6 py-5"
+              style={{ background: "linear-gradient(to top, rgba(6,10,15,0.92) 0%, transparent 100%)" }}
+            >
+              <div className="text-white font-bold text-lg leading-tight">{slot.label}</div>
+              <div className="text-slate-400 text-sm mt-0.5">{slot.sub}</div>
             </div>
+
+            {/* Prev button */}
+            <button
+              onClick={prev}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+              style={{ background: "rgba(6,10,15,0.7)", border: "1px solid rgba(51,65,85,0.6)", backdropFilter: "blur(8px)" }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-white">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {/* Next button */}
+            <button
+              onClick={next}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+              style={{ background: "rgba(6,10,15,0.7)", border: "1px solid rgba(51,65,85,0.6)", backdropFilter: "blur(8px)" }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-white">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {/* Slide counter */}
+            <div
+              className="absolute top-4 right-4 z-10 px-2.5 py-1 rounded-lg text-xs font-mono text-slate-300"
+              style={{ background: "rgba(6,10,15,0.7)", backdropFilter: "blur(8px)", border: "1px solid rgba(51,65,85,0.4)" }}
+            >
+              {active + 1} / {GALLERY_SLOTS.length}
+            </div>
+
+            {/* Progress bar */}
+            <div className="absolute bottom-0 left-0 right-0 z-20 h-0.5" style={{ background: "rgba(51,65,85,0.4)" }}>
+              <div
+                key={progressKey}
+                className="h-full"
+                style={{
+                  background: "linear-gradient(to right, #1D9E75, #22d3a3)",
+                  animation: paused ? "none" : `progress-fill ${INTERVAL}ms linear forwards`,
+                  width: paused ? undefined : undefined,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Dot indicators */}
+        <div className="flex justify-center items-center gap-2 mt-5">
+          {GALLERY_SLOTS.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              className="rounded-full transition-all duration-300"
+              style={{
+                width: i === active ? 24 : 8,
+                height: 8,
+                background: i === active ? "#1D9E75" : "rgba(71,85,105,0.7)",
+                boxShadow: i === active ? "0 0 8px rgba(29,158,117,0.6)" : "none",
+              }}
+            />
           ))}
         </div>
       </div>
