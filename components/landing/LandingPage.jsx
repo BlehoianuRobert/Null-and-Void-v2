@@ -137,6 +137,7 @@ function Navbar({ scrolled }) {
             { label: "Pros & Cons", href: "#tradeoffs" },
             { label: "How It Works", href: "#how-it-works" },
             { label: "Hardware", href: "#hardware" },
+            { label: "Sources", href: "#sources" },
             { label: "Gallery", href: "#gallery" },
           ].map((item) => (
             <a key={item.label} href={item.href} className="text-slate-400 hover:text-white text-sm transition-colors duration-200">
@@ -1036,6 +1037,87 @@ function TechStackSection() {
   );
 }
 
+// ─── Sources ──────────────────────────────────────────────────────────────────
+
+function SourcesSection() {
+  const softwareSources = [
+    "Next.js Documentation — web app, App Router, API routes",
+    "React Documentation — frontend components and state management",
+    "NextAuth.js Documentation — authentication and session handling",
+    "Prisma Documentation — ORM, schema modeling, migrations",
+    "PostgreSQL Documentation — relational database",
+    "Docker Documentation — containerized deployment",
+    "Docker Compose Documentation — multi-service orchestration",
+    "MQTT Essentials / Eclipse Mosquitto Docs — message broker and pub/sub transport",
+    "Expo Documentation — Android app build/runtime",
+    "React Native Documentation — mobile app framework",
+    "Expo Location — GPS and location tracking",
+    "Expo Sensors (Accelerometer) — phone motion/impact detection",
+    "Leaflet Documentation + React Leaflet — caregiver live map",
+  ];
+
+  const hardwareSources = [
+    "ESP32-C6 Documentation (Espressif) — microcontroller platform",
+    "Arduino-ESP32 Core — ESP32 Arduino firmware support",
+    "PubSubClient (MQTT for Arduino) — MQTT client on ESP32",
+    "Adafruit MPU6050 Library Docs — motion sensor integration",
+  ];
+
+  const aiSources = [
+    "OpenAI GPT (ChatGPT / Codex) — code generation help, debugging guidance, architecture suggestions, documentation drafting.",
+    "Google Gemini — alternative implementation ideas, code review feedback, explanation of tooling/workflows.",
+    "Anthropic Claude — reasoning support for refactoring decisions, error analysis, and technical writing improvements.",
+  ];
+
+  return (
+    <section
+      id="sources"
+      className="py-24 px-6"
+      style={{ borderTop: "1px solid rgba(51,65,85,0.4)", background: "rgba(10,15,26,0.55)" }}
+    >
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-14 animate-on-scroll">
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-slate-400 text-xs font-semibold tracking-wide mb-4"
+            style={{ border: "1px solid rgba(51,65,85,0.7)", background: "rgba(30,41,59,0.5)" }}
+          >
+            References
+          </div>
+          <h2 className="text-4xl font-extrabold text-white mb-4">Sources & AI Assistants</h2>
+          <p className="text-slate-400 max-w-3xl mx-auto text-sm leading-relaxed">
+            Documentation and tools used during development of the BlindHat platform.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <SourceCard title="Official Documentation (Software)" items={softwareSources} />
+          <SourceCard title="Official Documentation (Hardware / Firmware)" items={hardwareSources} />
+          <SourceCard title="AI Assistants Used" items={aiSources} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SourceCard({ title, items }) {
+  return (
+    <div
+      className="animate-on-scroll rounded-2xl p-6"
+      style={{ background: "rgba(13,20,36,0.92)", border: "1px solid rgba(51,65,85,0.55)" }}
+    >
+      <h3 className="text-lg font-bold text-white mb-3">{title}</h3>
+      <ul className="space-y-2">
+        {items.map((item, i) => (
+          <li key={i} className="text-sm text-slate-400 leading-relaxed flex gap-2">
+            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1D9E75]" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // ─── CTA Section ─────────────────────────────────────────────────────────────
 
 function CTASection() {
@@ -1154,6 +1236,7 @@ export default function LandingPage() {
       <GallerySection />
       <HowItWorksSection />
       <TechStackSection />
+      <SourcesSection />
       <CTASection />
       <Footer />
     </div>
