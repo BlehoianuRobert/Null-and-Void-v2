@@ -394,6 +394,20 @@ export default function TrackScreen() {
   }, [stop]);
 
   useEffect(() => {
+    if (!tracking || !configOk) return;
+
+    // Hard fallback: push one GPS sample every 2 minutes even if watchPosition
+    // is throttled by the OS while the device is idle.
+    const id = window.setInterval(() => {
+      void sendOnce().catch((e: unknown) => {
+        setLastErr(e instanceof Error ? e.message : 'Send failed');
+      });
+    }, LOCATION_SEND_INTERVAL_MS);
+
+    return () => window.clearInterval(id);
+  }, [tracking, configOk, sendOnce]);
+
+  useEffect(() => {
     if (!tracking || !configOk) {
       prevMagRef.current = null;
       lastLowGAtRef.current = null;
