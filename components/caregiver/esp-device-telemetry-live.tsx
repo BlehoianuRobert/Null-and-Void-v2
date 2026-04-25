@@ -81,7 +81,7 @@ export function EspDeviceTelemetryLive({ serialNumber, label, initial }: Props) 
           <dd>{data.lastSeenAt ? new Date(data.lastSeenAt).toLocaleString() : "—"}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Last phone impact peak</dt>
+          <dt className="text-slate-500">Last speed</dt>
           <dd>
             {data.lastAccelX != null ? `${Number(data.lastAccelX).toFixed(1)} m/s²` : "—"}
             {data.lastPhoneSpeedAt ? ` · ${new Date(data.lastPhoneSpeedAt).toLocaleTimeString()}` : ""}
