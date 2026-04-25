@@ -31,6 +31,24 @@ const ENV_BLIND_USER_ID = (process.env.EXPO_PUBLIC_BLIND_USER_ID ?? '').trim();
 const MOTION_COOLDOWN_MS = 90_000;
 const SUPPRESS_AFTER_OK_MS = 10 * 60 * 1000;
 
+function normalizeApiBaseInput(raw: string): string {
+  let s = raw.trim();
+  // Common typo: "http:10.0.0.5:3000" -> "http://10.0.0.5:3000"
+  s = s.replace(/^http:\/?(?!\/)/i, 'http://');
+  s = s.replace(/^https:\/?(?!\/)/i, 'https://');
+  s = s.replace(/\/+$/, '');
+  return s;
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function mapLocationError(e: unknown): string {
   const raw = e instanceof Error ? e.message : String(e);
   const msg = raw.toLowerCase();
@@ -164,17 +182,23 @@ export default function TrackScreen() {
     [patientIdInput]
   );
   const effectiveApiBase = useMemo(
-    () => (apiBaseInput.trim() || ENV_API_BASE).replace(/\/$/, ''),
+    () => normalizeApiBaseInput(apiBaseInput || ENV_API_BASE),
     [apiBaseInput]
   );
 
-  const configOk = Boolean(effectivePatientId && effectiveApiBase);
+  const configOk = Boolean(effectivePatientId && effectiveApiBase && isValidHttpUrl(effectiveApiBase));
 
   const saveSettings = useCallback(async () => {
     const id = patientIdInput.trim();
-    const api = apiBaseInput.trim().replace(/\/$/, '');
+    const api = normalizeApiBaseInput(apiBaseInput);
+    if (!isValidHttpUrl(api)) {
+      setLastErr('Invalid API base URL. Use http://IP:PORT or https://domain');
+      return;
+    }
     await AsyncStorage.setItem(STORAGE_PATIENT_ID, id);
     await AsyncStorage.setItem(STORAGE_API_BASE, api);
+    setApiBaseInput(api);
+    setLastErr(null);
     setSaveHint(id && api ? 'Saved on this phone' : 'Updated');
     setTimeout(() => setSaveHint(''), 2500);
   }, [patientIdInput, apiBaseInput]);
@@ -220,7 +244,7 @@ export default function TrackScreen() {
 
   const start = useCallback(async () => {
     if (!configOk) {
-      setLastErr('Enter patient ID and API base URL, then Save.');
+      setLastErr('Enter patient ID and a valid API base URL (http://... or https://...), then Save.');
       return;
     }
     await AsyncStorage.setItem(STORAGE_PATIENT_ID, effectivePatientId);

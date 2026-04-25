@@ -115,7 +115,7 @@ export function TrackingMap() {
         </div>
       ) : null}
 
-      <div className="absolute left-2 top-2 z-[1000] max-h-[58%] w-[min(100%-1rem,340px)] overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/95 p-3 text-xs text-slate-200 shadow-lg">
+      <div className="absolute bottom-2 left-2 right-2 z-[1000] max-h-[46%] overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/95 p-3 text-xs text-slate-200 shadow-lg md:bottom-auto md:left-auto md:right-2 md:top-2 md:max-h-[58%] md:w-[340px]">
         <div className="font-semibold text-slate-100">Location history + distance</div>
         <p className="mt-1 text-[11px] text-slate-500">
           Per-user totals are computed from phone GPS pings. Refreshes every {POLL_MS / 1000}s.
