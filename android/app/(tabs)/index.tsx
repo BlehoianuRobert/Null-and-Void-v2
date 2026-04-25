@@ -31,7 +31,8 @@ const ENV_BLIND_USER_ID = (process.env.EXPO_PUBLIC_BLIND_USER_ID ?? '').trim();
 const MOTION_COOLDOWN_MS = 90_000;
 const SUPPRESS_AFTER_OK_MS = 10 * 60 * 1000;
 const LOCATION_SEND_INTERVAL_MS = 120_000;
-const SPEED_SEND_INTERVAL_MS = 5000;
+// Keep realtime phone speed cadence aligned with dashboard telemetry polling (~4s).
+const SPEED_SEND_INTERVAL_MS = 4000;
 
 function normalizeApiBaseInput(raw: string): string {
   let s = raw.trim();
