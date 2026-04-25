@@ -5,6 +5,9 @@ import { useEffect, useState } from "react";
 type Snapshot = {
   lastDistanceCm: number | null;
   lastAccelX: number | null;
+  lastTempC?: number | null;
+  lastPressureHpa?: number | null;
+  lastEnvAt?: string | null;
   lastSeenAt: string | null;
   isOnline: boolean;
   batteryLevel: number | null;
@@ -27,6 +30,9 @@ export function EspDeviceTelemetryLive({ serialNumber, label, initial }: Props) 
     initial.lastSeenAt,
     initial.lastDistanceCm,
     initial.lastAccelX,
+    initial.lastTempC,
+    initial.lastPressureHpa,
+    initial.lastEnvAt,
     initial.isOnline,
     initial.batteryLevel,
     initial.lastPhoneSpeedMps,
@@ -79,6 +85,21 @@ export function EspDeviceTelemetryLive({ serialNumber, label, initial }: Props) 
         <div>
           <dt className="text-slate-500">Last seen</dt>
           <dd>{data.lastSeenAt ? new Date(data.lastSeenAt).toLocaleString() : "—"}</dd>
+        </div>
+        <div>
+          <dt className="text-slate-500">Temp / pressure (ESP)</dt>
+          <dd>
+            {(data.lastTempC != null || data.lastPressureHpa != null) ? (
+              <>
+                {data.lastTempC != null ? `${data.lastTempC.toFixed(1)}°C` : "—"}
+                {" / "}
+                {data.lastPressureHpa != null ? `${data.lastPressureHpa.toFixed(1)} hPa` : "—"}
+                {data.lastEnvAt ? ` · ${new Date(data.lastEnvAt).toLocaleTimeString()}` : ""}
+              </>
+            ) : (
+              "—"
+            )}
+          </dd>
         </div>
         <div>
           <dt className="text-slate-500">Last phone impact peak</dt>
